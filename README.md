@@ -9,7 +9,8 @@ A real-time strategy game set in a modern-day world (starting in 2026). The long
 The first playable milestone focuses on the battle loop only:
 - Large 2D battlefield rendered in an isometric-inspired style
 - Continuous real-time simulation
-- Touch/mouse selection and movement commands
+- Touch/mouse selection, two-finger camera pan, pinch zoom, and group movement formations
+- Mobile command HUD with unit recruitment, stop, and select-all controls
 - Three unit roles: infantry, tank, and APC
 - Basic automatic combat and a simple enemy AI
 - A small resource economy and a win/loss condition
@@ -26,7 +27,7 @@ This is a prototype foundation, not the complete game. World-map country managem
 
 ## Run
 
-Open this repository as a project in **Godot 4.x**, then run the main scene. The prototype has not yet been validated on a physical Android device; test and tune performance before treating it as release-ready.
+Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; obstacle pathfinding, full base production, save/load, and runtime/export testing remain open.
 
 ## Design decisions
 
