@@ -2,6 +2,9 @@ extends Node3D
 
 const PlayerScript = preload("res://scripts/player.gd")
 const MAGAZINE_SIZE := 30
+const FIRE_INTERVAL := 0.105
+const RELOAD_DURATION := 1.65
+const RAY_LENGTH := 100.0
 
 var player: CharacterBody3D
 var ammo := MAGAZINE_SIZE
@@ -33,8 +36,11 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_shoot()
-	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		else:
+			_shoot()
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
 		_reload()
 
 func _build_arena() -> void:
@@ -51,10 +57,12 @@ func _build_arena() -> void:
 	env.ambient_light_energy = 0.65
 	world_env.environment = env
 	add_child(world_env)
+
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, -28, 0)
 	sun.light_energy = 1.3
 	add_child(sun)
+
 	_add_box("ArenaFloor", Vector3(0, -0.25, 0), Vector3(34, 0.5, 34), Color(0.24, 0.27, 0.25))
 	_add_box("NorthWall", Vector3(0, 2, -17), Vector3(34, 4, 0.5), Color(0.32, 0.34, 0.36))
 	_add_box("SouthWall", Vector3(0, 2, 17), Vector3(34, 4, 0.5), Color(0.32, 0.34, 0.36))
@@ -70,6 +78,7 @@ func _add_box(label: String, pos: Vector3, size: Vector3, color: Color) -> void:
 	var body := StaticBody3D.new()
 	body.name = label
 	body.position = pos
+
 	var mesh_instance := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -79,6 +88,7 @@ func _add_box(label: String, pos: Vector3, size: Vector3, color: Color) -> void:
 	mat.roughness = 0.85
 	mesh_instance.material_override = mat
 	body.add_child(mesh_instance)
+
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = size
@@ -88,12 +98,17 @@ func _add_box(label: String, pos: Vector3, size: Vector3, color: Color) -> void:
 
 func _spawn_player() -> void:
 	player = CharacterBody3D.new()
+	player.name = "Player"
 	player.set_script(PlayerScript)
 	player.position = Vector3(0, 0.1, 11)
 	add_child(player)
 
 func _spawn_targets() -> void:
-	var positions := [Vector3(-10, 0, -9), Vector3(-5, 0, -12), Vector3(0, 0, -10), Vector3(5, 0, -12), Vector3(10, 0, -9), Vector3(10, 0, 5)]
+	var positions := [
+		Vector3(-10, 0, -9), Vector3(-5, 0, -12),
+		Vector3(0, 0, -10), Vector3(5, 0, -12),
+		Vector3(10, 0, -9), Vector3(10, 0, 5)
+	]
 	for i in positions.size():
 		_create_target(positions[i], i + 1)
 
@@ -102,6 +117,7 @@ func _create_target(pos: Vector3, index: int) -> void:
 	target.name = "Target_%d" % index
 	target.position = pos + Vector3(0, 1.0, 0)
 	target.add_to_group("shootable")
+
 	var mesh_instance := MeshInstance3D.new()
 	var mesh := CapsuleMesh.new()
 	mesh.radius = 0.42
@@ -112,6 +128,7 @@ func _create_target(pos: Vector3, index: int) -> void:
 	mat.metallic = 0.15
 	mesh_instance.material_override = mat
 	target.add_child(mesh_instance)
+
 	var collision := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.42
@@ -123,11 +140,13 @@ func _create_target(pos: Vector3, index: int) -> void:
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+
 	hud = Label.new()
 	hud.position = Vector2(24, 22)
 	hud.add_theme_font_size_override("font_size", 22)
 	hud.add_theme_color_override("font_color", Color.WHITE)
 	layer.add_child(hud)
+
 	message = Label.new()
 	message.anchor_left = 0.5
 	message.anchor_top = 1.0
@@ -140,8 +159,9 @@ func _build_hud() -> void:
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.add_theme_font_size_override("font_size", 16)
 	message.add_theme_color_override("font_color", Color(0.92, 0.94, 1.0))
-	message.text = "WASD حرکت  |  Shift دویدن  |  Space پرش  |  کلیک چپ شلیک  |  R خشاب  |  Esc آزادسازی نشانگر"
+	message.text = "WASD حرکت | Shift دویدن | Space پرش | کلیک چپ شلیک | R خشاب | Esc نشانگر ماوس"
 	layer.add_child(message)
+
 	var crosshair := Label.new()
 	crosshair.text = "+"
 	crosshair.anchor_left = 0.5
@@ -164,19 +184,20 @@ func _update_hud() -> void:
 		hud.text = "STRIKE ZONE     امتیاز: %d\nAK-STYLE RIFLE   %02d / %02d   %s" % [score, ammo, reserve_ammo, state]
 
 func _shoot() -> void:
-	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or is_reloading or fire_cooldown > 0.0:
+	if is_reloading or fire_cooldown > 0.0 or ammo <= 0:
+		if ammo <= 0 and not is_reloading:
+			_reload()
 		return
-	if ammo <= 0:
-		_reload()
-		return
+
 	ammo -= 1
-	fire_cooldown = 0.105
+	fire_cooldown = FIRE_INTERVAL
 	var camera := player.get_node("Camera3D") as Camera3D
 	var origin := camera.global_position
-	var end := origin - camera.global_basis.z * 100.0
+	var end := origin - camera.global_basis.z * RAY_LENGTH
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.exclude = [player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+
 	if not hit.is_empty() and hit.collider is Node and hit.collider.is_in_group("shootable"):
 		score += 100
 		hit.collider.queue_free()
@@ -193,5 +214,5 @@ func _reload() -> void:
 	if is_reloading or ammo == MAGAZINE_SIZE or reserve_ammo <= 0:
 		return
 	is_reloading = true
-	reload_time = 1.65
+	reload_time = RELOAD_DURATION
 	_update_hud()
