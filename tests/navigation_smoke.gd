@@ -62,6 +62,14 @@ func _run_tests() -> void:
 	assert(buildings[0]["queue"].size() == 1, "Infantry was not queued at barracks")
 	assert(buildings[1]["queue"].size() == 2, "Armored units were not queued at factory")
 
+	# Enemy AI must attack a nearby friendly structure rather than ignoring it.
+	var enemy_units: Array = game.get("enemy_units")
+	game.call("_spawn_unit", "infantry", "enemy", buildings[0]["pos"] + Vector2(0, 80))
+	var no_opponents: Array[Dictionary] = []
+	var building_hp_before_attack: float = buildings[0]["hp"]
+	game.call("_update_team", enemy_units, no_opponents, 1.0, false)
+	assert(float(buildings[0]["hp"]) < building_hp_before_attack, "Enemy AI did not damage a nearby friendly building")
+
 	# Upgrade and repair controls must update building state and consume resources.
 	game.set("selected_building", buildings[0])
 	buildings[0]["hp"] = 300.0
