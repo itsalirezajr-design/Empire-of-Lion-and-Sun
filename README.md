@@ -7,7 +7,7 @@ A real-time strategy game set in a modern-day world (starting in 2026). The long
 ## Current milestone: MVP 0.1
 
 The first playable milestone focuses on the battle loop only:
-- Large 2D battlefield rendered in an isometric-inspired style
+- Large 2D battlefield rendered in an isometric-inspired style, with static terrain separated from dynamic units
 - Continuous real-time simulation
 - Touch/mouse selection, two-finger camera pan, pinch zoom, and group movement formations
 - Mobile command HUD with unit recruitment, stop, and select-all controls
