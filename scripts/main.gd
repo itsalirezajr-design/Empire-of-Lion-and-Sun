@@ -252,7 +252,7 @@ func _issue_group_move(target: Vector2) -> void:
 			(float(column) - float(columns - 1) * 0.5) * 52.0,
 			(float(row) - float(rows - 1) * 0.5) * 46.0
 		)
-		selected_units[i]["destination"] = _clamp_to_map(target + offset)
+		_set_unit_destination(selected_units[i], target + offset)
 
 
 func _separation_vector(unit: Dictionary, team: Array[Dictionary]) -> Vector2:
@@ -428,23 +428,31 @@ func _build_hud() -> void:
 	bottom_panel.anchor_right = 1.0
 	bottom_panel.anchor_bottom = 1.0
 	bottom_panel.offset_left = 12.0
-	bottom_panel.offset_top = -82.0
+	bottom_panel.offset_top = -128.0
 	bottom_panel.offset_right = -12.0
 	bottom_panel.offset_bottom = -10.0
 	hud.add_child(bottom_panel)
-	var commands := HBoxContainer.new()
-	commands.add_theme_constant_override("separation", 8)
-	bottom_panel.add_child(commands)
-	_add_hud_button(commands, "INFANTRY", _recruit_infantry)
-	_add_hud_button(commands, "TANK", _recruit_tank)
-	_add_hud_button(commands, "APC", _recruit_apc)
-	_add_hud_button(commands, "STOP", _stop_selected_units)
-	_add_hud_button(commands, "SELECT ALL", _select_all_player_units)
+	var command_rows := VBoxContainer.new()
+	command_rows.add_theme_constant_override("separation", 4)
+	bottom_panel.add_child(command_rows)
+	var recruit_row := HBoxContainer.new()
+	recruit_row.add_theme_constant_override("separation", 6)
+	command_rows.add_child(recruit_row)
+	_add_hud_button(recruit_row, "INFANTRY", _recruit_infantry)
+	_add_hud_button(recruit_row, "TANK", _recruit_tank)
+	_add_hud_button(recruit_row, "APC", _recruit_apc)
+	var utility_row := HBoxContainer.new()
+	utility_row.add_theme_constant_override("separation", 6)
+	command_rows.add_child(utility_row)
+	_add_hud_button(utility_row, "STOP", _stop_selected_units)
+	_add_hud_button(utility_row, "SELECT ALL", _select_all_player_units)
+	_add_hud_button(utility_row, "SAVE", _save_game)
+	_add_hud_button(utility_row, "LOAD", _load_game)
 	selection_label = Label.new()
 	selection_label.text = "SELECTED: 0"
 	selection_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	selection_label.add_theme_font_size_override("font_size", 14)
-	commands.add_child(selection_label)
+	utility_row.add_child(selection_label)
 
 
 func _add_hud_button(parent: HBoxContainer, caption: String, action: Callable) -> void:
@@ -489,6 +497,106 @@ func _recruit_unit(kind: String) -> void:
 	_update_hud()
 
 
+
+func _save_game() -> void:
+	var save_data := {
+		"version": 1,
+		"credits": credits,
+		"fuel": fuel,
+		"materials": materials,
+		"elapsed": elapsed,
+		"player_base_hp": player_base_hp,
+		"enemy_base_hp": enemy_base_hp,
+		"player_units": _serialize_units(player_units),
+		"enemy_units": _serialize_units(enemy_units)
+	}
+	var file := FileAccess.open("user://empire_save.json", FileAccess.WRITE)
+	if file == null:
+		hud_message = "Save failed: cannot open save file."
+	else:
+		file.store_string(JSON.stringify(save_data))
+		file.close()
+		hud_message = "Game saved on this device."
+	_update_hud()
+
+
+func _serialize_units(units: Array[Dictionary]) -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	for unit in units:
+		var pos: Vector2 = unit["pos"]
+		var destination: Vector2 = unit["destination"]
+		records.append({
+			"kind": unit["kind"],
+			"pos": [pos.x, pos.y],
+			"destination": [destination.x, destination.y],
+			"hp": unit["hp"],
+			"max_hp": unit["max_hp"],
+			"speed": unit["speed"],
+			"damage": unit["damage"],
+			"cooldown": unit["cooldown"]
+		})
+	return records
+
+
+func _load_game() -> void:
+	if not FileAccess.file_exists("user://empire_save.json"):
+		hud_message = "No local save found."
+		_update_hud()
+		return
+	var file := FileAccess.open("user://empire_save.json", FileAccess.READ)
+	if file == null:
+		hud_message = "Load failed: cannot read save file."
+		_update_hud()
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not parsed is Dictionary or int(parsed.get("version", 0)) != 1:
+		hud_message = "Load failed: save format is invalid."
+		_update_hud()
+		return
+	credits = int(parsed.get("credits", 500))
+	fuel = int(parsed.get("fuel", 300))
+	materials = int(parsed.get("materials", 300))
+	elapsed = float(parsed.get("elapsed", 0.0))
+	player_base_hp = float(parsed.get("player_base_hp", 1200.0))
+	enemy_base_hp = float(parsed.get("enemy_base_hp", 1200.0))
+	player_units.clear()
+	enemy_units.clear()
+	selected_units.clear()
+	_restore_units(parsed.get("player_units", []), "player")
+	_restore_units(parsed.get("enemy_units", []), "enemy")
+	match_over = player_base_hp <= 0.0 or enemy_base_hp <= 0.0
+	match_message = "VICTORY — Enemy command center destroyed" if enemy_base_hp <= 0.0 else "DEFEAT — Your command center was destroyed" if player_base_hp <= 0.0 else ""
+	hud_message = "Game loaded from this device."
+	_update_hud()
+	queue_redraw()
+
+
+func _restore_units(records: Array, team: String) -> void:
+	for record_variant in records:
+		if not record_variant is Dictionary:
+			continue
+		var record: Dictionary = record_variant
+		var pos_data: Array = record.get("pos", [320.0, 1600.0])
+		if pos_data.size() < 2:
+			continue
+		var unit_pos := _clamp_to_map(Vector2(float(pos_data[0]), float(pos_data[1])))
+		var kind := str(record.get("kind", "infantry"))
+		if kind not in ["infantry", "tank", "apc"]:
+			kind = "infantry"
+		_spawn_unit(kind, team, unit_pos)
+		var units := player_units if team == "player" else enemy_units
+		var unit: Dictionary = units.back()
+		unit["hp"] = clampf(float(record.get("hp", 100.0)), 0.0, float(record.get("max_hp", 100.0)))
+		unit["max_hp"] = maxf(1.0, float(record.get("max_hp", 100.0)))
+		unit["speed"] = maxf(1.0, float(record.get("speed", UNIT_SPEED)))
+		unit["damage"] = maxf(0.0, float(record.get("damage", 12.0)))
+		unit["cooldown"] = maxf(0.0, float(record.get("cooldown", 0.0)))
+		var destination_data: Array = record.get("destination", [unit_pos.x, unit_pos.y])
+		if destination_data.size() >= 2:
+			_set_unit_destination(unit, Vector2(float(destination_data[0]), float(destination_data[1])))
+
+
 func _recruit_infantry() -> void:
 	_recruit_unit("infantry")
 
@@ -503,7 +611,7 @@ func _recruit_apc() -> void:
 
 func _stop_selected_units() -> void:
 	for unit in selected_units:
-		unit["destination"] = unit["pos"]
+		_set_unit_destination(unit, unit["pos"])
 	hud_message = "Selected units stopped."
 	_update_hud()
 
