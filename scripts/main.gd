@@ -122,8 +122,11 @@ func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: 
 			if not is_player and (destination == ENEMY_BASE or pos.distance_to(PLAYER_BASE) < pos.distance_to(ENEMY_BASE)):
 				destination = PLAYER_BASE
 			if pos.distance_to(destination) > 7.0:
-				pos = pos.move_toward(destination, float(unit["speed"]) * delta)
-				unit["pos"] = pos
+				var avoidance := _separation_vector(unit, team)
+				var desired := (destination - pos).normalized()
+				var steering := (desired + avoidance * 0.85).normalized()
+				pos = pos.move_toward(pos + steering * 1000.0, float(unit["speed"]) * delta)
+				unit["pos"] = _clamp_to_map(pos)
 			elif is_player:
 				if pos.distance_to(ENEMY_BASE) <= 150.0 and float(unit["cooldown"]) <= 0.0:
 					enemy_base_hp -= float(unit["damage"])
@@ -163,14 +166,42 @@ func _handle_tap(screen_pos: Vector2) -> void:
 			if not selected_units.has(clicked_unit):
 				selected_units.append(clicked_unit)
 		elif not selected_units.is_empty():
-			for unit in selected_units:
-				unit["destination"] = clicked_unit["pos"]
+			_issue_group_move(clicked_unit["pos"])
 	else:
 		if not selected_units.is_empty():
-			for unit in selected_units:
-				unit["destination"] = _clamp_to_map(world_pos)
+			_issue_group_move(_clamp_to_map(world_pos))
 		else:
 			selected_units.clear()
+
+
+
+func _issue_group_move(target: Vector2) -> void:
+	var count := selected_units.size()
+	if count == 0:
+		return
+	var columns := ceili(sqrt(float(count)))
+	var rows := ceili(float(count) / float(columns))
+	for i in range(count):
+		var column := i % columns
+		var row := int(i / columns)
+		var offset := Vector2(
+			(float(column) - float(columns - 1) * 0.5) * 52.0,
+			(float(row) - float(rows - 1) * 0.5) * 46.0
+		)
+		selected_units[i]["destination"] = _clamp_to_map(target + offset)
+
+
+func _separation_vector(unit: Dictionary, team: Array[Dictionary]) -> Vector2:
+	var push := Vector2.ZERO
+	var unit_pos: Vector2 = unit["pos"]
+	for other in team:
+		if other == unit:
+			continue
+		var difference: Vector2 = unit_pos - other["pos"]
+		var distance := difference.length()
+		if distance > 0.1 and distance < 38.0:
+			push += difference.normalized() * ((38.0 - distance) / 38.0)
+	return push.limit_length(1.0)
 
 
 func _unit_at(world_pos: Vector2) -> Dictionary:
