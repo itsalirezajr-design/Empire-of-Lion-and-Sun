@@ -17,7 +17,7 @@ The first playable milestone focuses on the battle loop only:
 - Local JSON save/load for the current battle state
 - A small resource economy and a win/loss condition
 
-This is a prototype foundation, not the complete game. World-map country management, advanced pathfinding, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
+This is a prototype foundation, not the complete game. The source now includes placeable barracks, armor factory and resource depot, construction timers, production queues, resource capacity, building repair/upgrades, and versioned local persistence. Godot runtime validation and Android device/export testing are still pending. World-map country management, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
 
 ## Project layout
 
@@ -30,7 +30,7 @@ This is a prototype foundation, not the complete game. World-map country managem
 
 ## Run
 
-Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; full base production, and runtime/export testing remain open. A* pathfinding and local save/load are now implemented in source but still require runtime validation.
+Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; runtime validation, Android device testing, and export remain open. A* pathfinding, base construction/production and versioned local save/load are implemented in source but still require runtime validation.
 
 ## Design decisions
 
