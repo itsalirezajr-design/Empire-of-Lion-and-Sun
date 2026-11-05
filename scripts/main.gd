@@ -13,6 +13,10 @@ const ENEMY_BASE := Vector2(5400, 1600)
 var player_units: Array[Dictionary] = []
 var enemy_units: Array[Dictionary] = []
 var selected_units: Array[Dictionary] = []
+var buildings: Array[Dictionary] = []
+var selected_building: Dictionary = {}
+var build_mode := ""
+const BASE_RESOURCE_CAP := 1000
 var player_base_hp := 1200.0
 var enemy_base_hp := 1200.0
 var credits := 500
@@ -63,9 +67,10 @@ func _process(delta: float) -> void:
 	income_clock += delta
 	enemy_spawn_clock += delta
 	if income_clock >= 3.0:
-		credits += 45
-		fuel += 12
-		materials += 18
+		var capacity := _resource_capacity()
+		credits = mini(capacity, credits + 45)
+		fuel = mini(capacity, fuel + 12)
+		materials = mini(capacity, materials + 18)
 		income_clock = 0.0
 	if enemy_spawn_clock >= 14.0:
 		if enemy_units.size() < 30:
@@ -73,6 +78,7 @@ func _process(delta: float) -> void:
 		enemy_spawn_clock = 0.0
 	_update_team(player_units, enemy_units, delta, true)
 	_update_team(enemy_units, player_units, delta, false)
+	_update_buildings(delta)
 	if player_base_hp <= 0.0:
 		match_over = true
 		match_message = "DEFEAT — Your command center was destroyed"
@@ -239,6 +245,18 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 
 func _handle_tap(screen_pos: Vector2) -> void:
 	var world_pos := _screen_to_world(screen_pos)
+	if not build_mode.is_empty():
+		_place_building(world_pos)
+		return
+	var clicked_building := _building_at(world_pos)
+	if not clicked_building.is_empty():
+		selected_building = clicked_building
+		selected_units.clear()
+		hud_message = clicked_building["kind"].to_upper() + " selected (level %d)." % int(clicked_building["level"])
+		_update_hud()
+		queue_redraw()
+		return
+	selected_building = {}
 	var clicked_unit := _unit_at(world_pos)
 	if not clicked_unit.is_empty():
 		if clicked_unit["team"] == "player":
@@ -445,19 +463,31 @@ func _build_hud() -> void:
 	bottom_panel.anchor_right = 1.0
 	bottom_panel.anchor_bottom = 1.0
 	bottom_panel.offset_left = 12.0
-	bottom_panel.offset_top = -128.0
+	bottom_panel.offset_top = -252.0
 	bottom_panel.offset_right = -12.0
 	bottom_panel.offset_bottom = -10.0
 	hud.add_child(bottom_panel)
 	var command_rows := VBoxContainer.new()
 	command_rows.add_theme_constant_override("separation", 4)
 	bottom_panel.add_child(command_rows)
+	var build_row := HBoxContainer.new()
+	build_row.add_theme_constant_override("separation", 6)
+	command_rows.add_child(build_row)
+	_add_hud_button(build_row, "BUILD BARRACKS", _begin_build_barracks)
+	_add_hud_button(build_row, "BUILD FACTORY", _begin_build_factory)
+	_add_hud_button(build_row, "BUILD DEPOT", _begin_build_depot)
 	var recruit_row := HBoxContainer.new()
 	recruit_row.add_theme_constant_override("separation", 6)
 	command_rows.add_child(recruit_row)
 	_add_hud_button(recruit_row, "INFANTRY", _recruit_infantry)
 	_add_hud_button(recruit_row, "TANK", _recruit_tank)
 	_add_hud_button(recruit_row, "APC", _recruit_apc)
+	var building_row := HBoxContainer.new()
+	building_row.add_theme_constant_override("separation", 6)
+	command_rows.add_child(building_row)
+	_add_hud_button(building_row, "REPAIR", _repair_selected_building)
+	_add_hud_button(building_row, "UPGRADE", _upgrade_selected_building)
+	_add_hud_button(building_row, "CANCEL BUILD", _cancel_build_mode)
 	var utility_row := HBoxContainer.new()
 	utility_row.add_theme_constant_override("separation", 6)
 	command_rows.add_child(utility_row)
@@ -483,10 +513,117 @@ func _add_hud_button(parent: HBoxContainer, caption: String, action: Callable) -
 
 
 func _recruit_unit(kind: String) -> void:
+	_enqueue_unit(kind)
+
+
+func _resource_capacity() -> int:
+	var depot_count := 0
+	for building in buildings:
+		if building["team"] == "player" and building["kind"] == "depot" and float(building["construction_remaining"]) <= 0.0:
+			depot_count += 1
+	return BASE_RESOURCE_CAP + depot_count * 500
+
+
+func _building_cost(kind: String) -> Dictionary:
+	match kind:
+		"barracks": return {"credits": 250, "materials": 120, "time": 6.0}
+		"factory": return {"credits": 400, "materials": 220, "time": 9.0}
+		"depot": return {"credits": 180, "materials": 150, "time": 5.0}
+	return {}
+
+
+func _begin_build(kind: String) -> void:
 	if match_over:
 		return
-	if player_units.size() >= 30:
-		hud_message = "Army limit reached (30 units)."
+	build_mode = kind
+	selected_building = {}
+	selected_units.clear()
+	hud_message = "Place " + kind.to_upper() + " on an empty area near your base."
+	_update_hud()
+
+
+func _begin_build_barracks() -> void:
+	_begin_build("barracks")
+
+
+func _begin_build_factory() -> void:
+	_begin_build("factory")
+
+
+func _begin_build_depot() -> void:
+	_begin_build("depot")
+
+
+func _cancel_build_mode() -> void:
+	build_mode = ""
+	hud_message = "Build placement cancelled."
+	_update_hud()
+
+
+func _place_building(world_pos: Vector2) -> void:
+	var kind := build_mode
+	var cost := _building_cost(kind)
+	if cost.is_empty():
+		build_mode = ""
+		return
+	var cell := _world_to_grid(world_pos)
+	var placement := _grid_to_world(cell)
+	if placement.distance_to(PLAYER_BASE) > 1150.0:
+		hud_message = "Build within 1150 units of your command center."
+		_update_hud()
+		return
+	if placement.distance_to(PLAYER_BASE) < 190.0:
+		hud_message = "Too close to the command center."
+		_update_hud()
+		return
+	for building in buildings:
+		if placement.distance_to(building["pos"]) < 155.0:
+			hud_message = "Building area is occupied."
+			_update_hud()
+			return
+	if credits < int(cost["credits"]) or materials < int(cost["materials"]):
+		hud_message = "Not enough credits or materials for construction."
+		_update_hud()
+		return
+	credits -= int(cost["credits"])
+	materials -= int(cost["materials"])
+	var building := {
+		"kind": kind, "team": "player", "pos": placement,
+		"hp": 500.0, "max_hp": 500.0, "level": 1,
+		"construction_remaining": float(cost["time"]),
+		"queue": [], "production_remaining": 0.0
+	}
+	if kind == "factory":
+		building["hp"] = 750.0
+		building["max_hp"] = 750.0
+	elif kind == "depot":
+		building["hp"] = 400.0
+		building["max_hp"] = 400.0
+	buildings.append(building)
+	build_mode = ""
+	hud_message = kind.to_upper() + " construction started."
+	_update_hud()
+	queue_redraw()
+
+
+func _building_at(world_pos: Vector2) -> Dictionary:
+	for building in buildings:
+		if world_pos.distance_to(building["pos"]) <= 68.0:
+			return building
+	return {}
+
+
+func _enqueue_unit(kind: String) -> void:
+	if match_over:
+		return
+	var required_building := "barracks" if kind == "infantry" else "factory"
+	var producer: Dictionary = {}
+	for building in buildings:
+		if building["team"] == "player" and building["kind"] == required_building and float(building["construction_remaining"]) <= 0.0 and building["queue"].size() < 5:
+			producer = building
+			break
+	if producer.is_empty():
+		hud_message = "Complete a " + required_building.to_upper() + " first (queue limit: 5)."
 		_update_hud()
 		return
 	var cost_credits := 100
@@ -502,22 +639,139 @@ func _recruit_unit(kind: String) -> void:
 			cost_fuel = 35
 			cost_materials = 70
 	if credits < cost_credits or fuel < cost_fuel or materials < cost_materials:
-		hud_message = "Not enough resources to recruit " + kind.to_upper() + "."
+		hud_message = "Not enough resources to queue " + kind.to_upper() + "."
 		_update_hud()
 		return
 	credits -= cost_credits
 	fuel -= cost_fuel
 	materials -= cost_materials
-	var spawn_offset := Vector2(randf_range(110.0, 190.0), randf_range(-150.0, 150.0))
-	_spawn_unit(kind, "player", _clamp_to_map(PLAYER_BASE + spawn_offset))
-	hud_message = kind.to_upper() + " recruited."
+	producer["queue"].append(kind)
+	if float(producer["production_remaining"]) <= 0.0:
+		producer["production_remaining"] = _production_time(kind, int(producer["level"]))
+	hud_message = kind.to_upper() + " added to production queue."
 	_update_hud()
+
+
+func _production_time(kind: String, level: int) -> float:
+	var base_time := 8.0 if kind == "infantry" else 16.0 if kind == "tank" else 12.0
+	return maxf(3.0, base_time / (1.0 + float(level - 1) * 0.2))
+
+
+func _update_buildings(delta: float) -> void:
+	for building in buildings:
+		if float(building["construction_remaining"]) > 0.0:
+			building["construction_remaining"] = maxf(0.0, float(building["construction_remaining"]) - delta)
+			continue
+		var queue: Array = building["queue"]
+		if queue.is_empty():
+			continue
+		if player_units.size() >= 30:
+			building["production_remaining"] = 0.0
+			continue
+		building["production_remaining"] = float(building["production_remaining"]) - delta
+		if float(building["production_remaining"]) <= 0.0:
+			var kind := str(queue.pop_front())
+			var spawn := _clamp_to_map(building["pos"] + Vector2(90.0, 55.0))
+			_spawn_unit(kind, "player", spawn)
+			if not queue.is_empty():
+				building["production_remaining"] = _production_time(str(queue[0]), int(building["level"]))
+			hud_message = kind.to_upper() + " production completed."
+
+
+func _repair_selected_building() -> void:
+	if selected_building.is_empty():
+		hud_message = "Select one of your buildings first."
+		_update_hud()
+		return
+	var missing := float(selected_building["max_hp"]) - float(selected_building["hp"])
+	var repair := minf(100.0, missing)
+	var cost := ceili(repair / 10.0) * 10
+	if repair <= 0.0:
+		hud_message = "Building is already at full health."
+	elif materials < cost:
+		hud_message = "Not enough materials to repair."
+	else:
+		materials -= cost
+		selected_building["hp"] = minf(float(selected_building["max_hp"]), float(selected_building["hp"]) + repair)
+		hud_message = "Building repaired by %.0f HP." % repair
+	_update_hud()
+	queue_redraw()
+
+
+func _upgrade_selected_building() -> void:
+	if selected_building.is_empty():
+		hud_message = "Select one of your buildings first."
+		_update_hud()
+		return
+	if float(selected_building["construction_remaining"]) > 0.0:
+		hud_message = "Finish construction before upgrading."
+		_update_hud()
+		return
+	var level := int(selected_building["level"])
+	var credit_cost := 200 * level
+	var material_cost := 120 * level
+	if credits < credit_cost or materials < material_cost:
+		hud_message = "Not enough resources for upgrade."
+	else:
+		credits -= credit_cost
+		materials -= material_cost
+		selected_building["level"] = level + 1
+		selected_building["max_hp"] = float(selected_building["max_hp"]) * 1.25
+		selected_building["hp"] = minf(float(selected_building["max_hp"]), float(selected_building["hp"]) + 100.0)
+		hud_message = "Building upgraded to level %d." % int(selected_building["level"])
+	_update_hud()
+	queue_redraw()
+
+
+func _serialize_buildings() -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	for building in buildings:
+		records.append({
+			"kind": building["kind"], "team": building["team"],
+			"pos": [building["pos"].x, building["pos"].y],
+			"hp": building["hp"], "max_hp": building["max_hp"],
+			"level": building["level"],
+			"construction_remaining": building["construction_remaining"],
+			"queue": building["queue"], "production_remaining": building["production_remaining"]
+		})
+	return records
+
+
+func _restore_buildings(records: Array) -> void:
+	buildings.clear()
+	selected_building = {}
+	for item in records:
+		if not (item is Dictionary):
+			continue
+		var record: Dictionary = item
+		var pos_data: Array = record.get("pos", [])
+		if pos_data.size() < 2:
+			continue
+		var kind := str(record.get("kind", "barracks"))
+		if not (kind in ["barracks", "factory", "depot"]):
+			continue
+		var queue_data: Array = record.get("queue", [])
+		var clean_queue: Array = []
+		for queued_kind in queue_data:
+			if queued_kind in ["infantry", "tank", "apc"] and clean_queue.size() < 5:
+				clean_queue.append(queued_kind)
+		buildings.append({
+			"kind": kind, "team": "player",
+			"pos": _clamp_to_map(Vector2(float(pos_data[0]), float(pos_data[1]))),
+			"hp": maxf(0.0, float(record.get("hp", 100.0))),
+			"max_hp": maxf(1.0, float(record.get("max_hp", 500.0))),
+			"level": clampi(int(record.get("level", 1)), 1, 10),
+			"construction_remaining": maxf(0.0, float(record.get("construction_remaining", 0.0))),
+			"queue": clean_queue,
+			"production_remaining": maxf(0.0, float(record.get("production_remaining", 0.0)))
+		})
+
 
 
 
 func _save_game() -> void:
 	var save_data := {
-		"version": 1,
+		"version": 2,
 		"credits": credits,
 		"fuel": fuel,
 		"materials": materials,
@@ -525,7 +779,8 @@ func _save_game() -> void:
 		"player_base_hp": player_base_hp,
 		"enemy_base_hp": enemy_base_hp,
 		"player_units": _serialize_units(player_units),
-		"enemy_units": _serialize_units(enemy_units)
+		"enemy_units": _serialize_units(enemy_units),
+		"buildings": _serialize_buildings()
 	}
 	var file := FileAccess.open("user://empire_save.json", FileAccess.WRITE)
 	if file == null:
@@ -567,7 +822,7 @@ func _load_game() -> void:
 		return
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
-	if not (parsed is Dictionary) or int(parsed.get("version", 0)) != 1:
+	if not (parsed is Dictionary) or not (int(parsed.get("version", 0)) in [1, 2]):
 		hud_message = "Load failed: save format is invalid."
 		_update_hud()
 		return
@@ -584,6 +839,7 @@ func _load_game() -> void:
 	var enemy_records: Array = parsed.get("enemy_units", [])
 	_restore_units(player_records, "player")
 	_restore_units(enemy_records, "enemy")
+	_restore_buildings(parsed.get("buildings", []))
 	match_over = player_base_hp <= 0.0 or enemy_base_hp <= 0.0
 	match_message = "VICTORY — Enemy command center destroyed" if enemy_base_hp <= 0.0 else "DEFEAT — Your command center was destroyed" if player_base_hp <= 0.0 else ""
 	hud_message = "Game loaded from this device."
@@ -644,7 +900,11 @@ func _select_all_player_units() -> void:
 
 
 func _update_hud() -> void:
-	stats_label.text = "EMPIRE OF LION AND SUN  |  CREDITS %d   FUEL %d   MATERIALS %d\nBASE %.0f HP  |  ENEMY %.0f HP  |  ARMY %d  |  %.0f SEC\n%s" % [credits, fuel, materials, player_base_hp, enemy_base_hp, player_units.size(), elapsed, hud_message]
+	var building_count := buildings.size()
+	var queue_count := 0
+	for building in buildings:
+		queue_count += building["queue"].size()
+	stats_label.text = "EMPIRE OF LION AND SUN  |  CREDITS %d   FUEL %d   MATERIALS %d / %d\nBASE %.0f HP  |  ENEMY %.0f HP  |  ARMY %d  |  BUILDINGS %d  |  QUEUE %d\n%s" % [credits, fuel, materials, _resource_capacity(), player_base_hp, enemy_base_hp, player_units.size(), building_count, queue_count, hud_message]
 	if selection_label != null:
 		selection_label.text = "SELECTED: %d" % selected_units.size()
 	if match_over:
@@ -659,6 +919,8 @@ func _draw() -> void:
 	# Static terrain is rendered by TerrainLayer; this node redraws only active gameplay objects.
 	_draw_base(PLAYER_BASE, Color(0.2, 0.55, 0.95), player_base_hp)
 	_draw_base(ENEMY_BASE, Color(0.9, 0.25, 0.2), enemy_base_hp)
+	for building in buildings:
+		_draw_building(building)
 	var render_units: Array[Dictionary] = []
 	render_units.append_array(player_units)
 	render_units.append_array(enemy_units)
@@ -704,6 +966,23 @@ func _draw_base(pos: Vector2, tint: Color, hp: float) -> void:
 	]), tint.lightened(0.22))
 	draw_rect(Rect2(pos + Vector2(-65, -126), Vector2(130, 7)), Color(0.08, 0.08, 0.08), true)
 	draw_rect(Rect2(pos + Vector2(-65, -126), Vector2(130.0 * clampf(hp / 1200.0, 0.0, 1.0), 7)), Color(0.2, 0.9, 0.35), true)
+
+
+func _draw_building(building: Dictionary) -> void:
+	var pos: Vector2 = building["pos"]
+	var kind := str(building["kind"])
+	var tint := Color(0.45, 0.62, 0.35) if kind == "barracks" else Color(0.42, 0.48, 0.58) if kind == "factory" else Color(0.68, 0.57, 0.30)
+	var half := Vector2(58.0, 34.0)
+	draw_colored_polygon(PackedVector2Array([pos + Vector2(0, -half.y), pos + Vector2(half.x, 0), pos + Vector2(0, half.y), pos + Vector2(-half.x, 0)]), Color(0.07, 0.08, 0.07, 0.8))
+	draw_colored_polygon(PackedVector2Array([pos + Vector2(0, -half.y - 14), pos + Vector2(half.x, -14), pos + Vector2(0, half.y - 14), pos + Vector2(-half.x, -14)]), tint.darkened(0.25))
+	draw_rect(Rect2(pos + Vector2(-42, -70), Vector2(84, 6)), Color(0.05, 0.06, 0.05), true)
+	draw_rect(Rect2(pos + Vector2(-42, -70), Vector2(84.0 * clampf(float(building["hp"]) / float(building["max_hp"]), 0.0, 1.0), 6)), Color(0.2, 0.9, 0.35), true)
+	if selected_building == building:
+		draw_arc(pos, 76.0, 0.0, TAU, 48, Color(1.0, 0.85, 0.2), 3.0)
+	if float(building["construction_remaining"]) > 0.0:
+		draw_string(ThemeDB.fallback_font, pos + Vector2(-35, -82), "BUILD %.0f" % float(building["construction_remaining"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	elif not building["queue"].is_empty():
+		draw_string(ThemeDB.fallback_font, pos + Vector2(-35, -82), "QUEUE %d" % building["queue"].size(), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
 
 func _draw_unit(unit: Dictionary) -> void:
