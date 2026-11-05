@@ -171,8 +171,9 @@ func _shoot() -> void:
 		return
 	ammo -= 1
 	fire_cooldown = 0.105
-	var origin := player.camera.global_position
-	var end := origin - player.camera.global_basis.z * 100.0
+	var camera := player.get_node("Camera3D") as Camera3D
+	var origin := camera.global_position
+	var end := origin - camera.global_basis.z * 100.0
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.exclude = [player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
