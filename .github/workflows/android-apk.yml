@@ -25,6 +25,7 @@ jobs:
           mkdir -p "$HOME/.local/share/godot/export_templates" "$HOME/.config/godot"
           cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
           keytool -genkeypair -v -keystore "$RUNNER_TEMP/empire-debug.keystore" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/empire-debug.keystore" >> "$GITHUB_ENV"
           cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<EOF
           [gd_resource type="EditorSettings" format=3]
           [resource]
@@ -50,7 +51,6 @@ jobs:
         env:
           ANDROID_HOME: /usr/lib/android-sdk
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/empire-debug.keystore
           GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
