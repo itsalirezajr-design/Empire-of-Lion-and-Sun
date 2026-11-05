@@ -43,6 +43,7 @@ jobs:
         run: godot --headless --path . --script res://tests/phase3_ui_smoke.gd
       - name: Build Android debug APK
         env:
+          HOME: /root
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
           GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
@@ -50,6 +51,8 @@ jobs:
           mkdir -p build
           godot --headless --path . --export-debug "Android" build/EmpireOfLionAndSun-debug.apk
           test -s build/EmpireOfLionAndSun-debug.apk
+          unzip -t build/EmpireOfLionAndSun-debug.apk
+          /usr/lib/android-sdk/build-tools/33.0.2/apksigner verify --verbose build/EmpireOfLionAndSun-debug.apk
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:
