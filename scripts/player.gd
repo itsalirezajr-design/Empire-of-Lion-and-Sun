@@ -4,16 +4,23 @@ const WALK_SPEED := 6.0
 const SPRINT_SPEED := 9.0
 const JUMP_VELOCITY := 4.5
 const MOUSE_SENSITIVITY := 0.0022
+const TOUCH_LOOK_SENSITIVITY := 0.0035
 const LOOK_LIMIT := 88.0
+const JOYSTICK_RADIUS := 78.0
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var camera: Camera3D
+var _move_touch_index := -1
+var _look_touch_index := -1
+var _move_touch_origin := Vector2.ZERO
+var _touch_move := Vector2.ZERO
 
 func _ready() -> void:
 	_setup_input_actions()
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_build_collision()
 	_build_camera_and_weapon()
+	if not DisplayServer.is_touchscreen_available():
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _setup_input_actions() -> void:
 	_add_key_action("move_forward", KEY_W)
@@ -61,25 +68,50 @@ func _build_camera_and_weapon() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
-		camera.rotation.x = clampf(
-			camera.rotation.x,
-			deg_to_rad(-LOOK_LIMIT),
-			deg_to_rad(LOOK_LIMIT)
-		)
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		_apply_look(event.relative, MOUSE_SENSITIVITY)
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+	elif event is InputEventScreenTouch:
+		_handle_screen_touch(event)
+	elif event is InputEventScreenDrag:
+		_handle_screen_drag(event)
+
+func _handle_screen_touch(event: InputEventScreenTouch) -> void:
+	var screen_width := get_viewport().get_visible_rect().size.x
+	if event.pressed:
+		if event.position.x < screen_width * 0.48 and _move_touch_index == -1:
+			_move_touch_index = event.index
+			_move_touch_origin = event.position
+			_touch_move = Vector2.ZERO
+		elif event.position.x >= screen_width * 0.48 and _look_touch_index == -1:
+			_look_touch_index = event.index
+	else:
+		if event.index == _move_touch_index:
+			_move_touch_index = -1
+			_touch_move = Vector2.ZERO
+		if event.index == _look_touch_index:
+			_look_touch_index = -1
+
+func _handle_screen_drag(event: InputEventScreenDrag) -> void:
+	if event.index == _move_touch_index:
+		var displacement: Vector2 = event.position - _move_touch_origin
+		_touch_move = (displacement / JOYSTICK_RADIUS).limit_length(1.0)
+	elif event.index == _look_touch_index:
+		_apply_look(event.relative, TOUCH_LOOK_SENSITIVITY)
+
+func _apply_look(relative_motion: Vector2, sensitivity: float) -> void:
+	rotate_y(-relative_motion.x * sensitivity)
+	camera.rotate_x(-relative_motion.y * sensitivity)
+	camera.rotation.x = clampf(camera.rotation.x, deg_to_rad(-LOOK_LIMIT), deg_to_rad(LOOK_LIMIT))
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta
-
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	# Godot's forward direction is -Z, so forward input maps to negative local Z.
+	var keyboard_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var input_dir := (keyboard_dir + _touch_move).limit_length(1.0)
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else WALK_SPEED
 
@@ -89,5 +121,4 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, WALK_SPEED * 7.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, WALK_SPEED * 7.0 * delta)
-
 	move_and_slide()
