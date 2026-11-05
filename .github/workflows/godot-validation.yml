@@ -26,5 +26,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Import and validate Godot project
         run: godot --headless --editor --path . --quit
-      - name: Run navigation and save-load smoke tests
+      - name: Run phase 1 and 2 gameplay smoke tests
         run: godot --headless --path . --script res://tests/navigation_smoke.gd
+      - name: Run phase 3 menu smoke tests
+        run: godot --headless --path . --script res://tests/phase3_ui_smoke.gd
