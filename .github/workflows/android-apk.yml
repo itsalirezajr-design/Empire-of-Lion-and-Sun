@@ -1,0 +1,40 @@
+name: Android debug APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "project.godot"
+      - "export_presets.cfg"
+      - "scenes/**"
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Import project
+        run: godot --headless --editor --path . --quit
+      - name: Run phase 1 and 2 gameplay tests
+        run: godot --headless --path . --script res://tests/navigation_smoke.gd
+      - name: Run phase 3 menu tests
+        run: godot --headless --path . --script res://tests/phase3_ui_smoke.gd
+      - name: Build Android debug APK
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-debug "Android" build/EmpireOfLionAndSun-debug.apk
+          test -s build/EmpireOfLionAndSun-debug.apk
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmpireOfLionAndSun-Android-debug
+          path: build/EmpireOfLionAndSun-debug.apk
+          if-no-files-found: error
+          retention-days: 14
