@@ -117,18 +117,35 @@ func _grid_to_world(cell: Vector2i) -> Vector2:
 	)
 
 
+func _nearest_walkable_cell(origin: Vector2i) -> Vector2i:
+	if not pathfinder.is_point_solid(origin):
+		return origin
+	for radius in range(1, 9):
+		for row_offset in range(-radius, radius + 1):
+			for column_offset in range(-radius, radius + 1):
+				if maxi(absi(row_offset), absi(column_offset)) != radius:
+					continue
+				var candidate := origin + Vector2i(column_offset, row_offset)
+				if candidate.x >= 0 and candidate.x < ISO_GRID_SIZE and candidate.y >= 0 and candidate.y < ISO_GRID_SIZE:
+					if not pathfinder.is_point_solid(candidate):
+						return candidate
+	return origin
+
+
 func _set_unit_destination(unit: Dictionary, destination: Vector2) -> void:
-	var start_cell := _world_to_grid(unit["pos"])
-	var end_cell := _world_to_grid(_clamp_to_map(destination))
+	var start_cell := _nearest_walkable_cell(_world_to_grid(unit["pos"]))
+	var requested_destination := _clamp_to_map(destination)
+	var end_cell := _nearest_walkable_cell(_world_to_grid(requested_destination))
+	var final_destination := requested_destination if end_cell == _world_to_grid(requested_destination) else _grid_to_world(end_cell)
 	var cell_path: Array[Vector2i] = pathfinder.get_id_path(start_cell, end_cell)
 	var world_path: Array[Vector2] = []
 	for i in range(1, cell_path.size()):
 		world_path.append(_grid_to_world(cell_path[i]))
-	if world_path.is_empty() and start_cell != end_cell:
-		world_path.append(_clamp_to_map(destination))
-	elif not world_path.is_empty():
-		world_path.append(_clamp_to_map(destination))
-	unit["destination"] = _clamp_to_map(destination)
+	if not world_path.is_empty():
+		world_path.append(final_destination)
+	elif start_cell == end_cell and unit["pos"].distance_to(final_destination) > 7.0:
+		world_path.append(final_destination)
+	unit["destination"] = final_destination
 	unit["path"] = world_path
 	unit["path_index"] = 0
 
@@ -550,7 +567,7 @@ func _load_game() -> void:
 		return
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
-	if not parsed is Dictionary or int(parsed.get("version", 0)) != 1:
+	if not (parsed is Dictionary) or int(parsed.get("version", 0)) != 1:
 		hud_message = "Load failed: save format is invalid."
 		_update_hud()
 		return
@@ -563,8 +580,10 @@ func _load_game() -> void:
 	player_units.clear()
 	enemy_units.clear()
 	selected_units.clear()
-	_restore_units(parsed.get("player_units", []), "player")
-	_restore_units(parsed.get("enemy_units", []), "enemy")
+	var player_records: Array = parsed.get("player_units", [])
+	var enemy_records: Array = parsed.get("enemy_units", [])
+	_restore_units(player_records, "player")
+	_restore_units(enemy_records, "enemy")
 	match_over = player_base_hp <= 0.0 or enemy_base_hp <= 0.0
 	match_message = "VICTORY — Enemy command center destroyed" if enemy_base_hp <= 0.0 else "DEFEAT — Your command center was destroyed" if player_base_hp <= 0.0 else ""
 	hud_message = "Game loaded from this device."
@@ -574,7 +593,7 @@ func _load_game() -> void:
 
 func _restore_units(records: Array, team: String) -> void:
 	for record_variant in records:
-		if not record_variant is Dictionary:
+		if not (record_variant is Dictionary):
 			continue
 		var record: Dictionary = record_variant
 		var pos_data: Array = record.get("pos", [320.0, 1600.0])
@@ -582,7 +601,7 @@ func _restore_units(records: Array, team: String) -> void:
 			continue
 		var unit_pos := _clamp_to_map(Vector2(float(pos_data[0]), float(pos_data[1])))
 		var kind := str(record.get("kind", "infantry"))
-		if kind not in ["infantry", "tank", "apc"]:
+		if not (kind in ["infantry", "tank", "apc"]):
 			kind = "infantry"
 		_spawn_unit(kind, team, unit_pos)
 		var units := player_units if team == "player" else enemy_units
