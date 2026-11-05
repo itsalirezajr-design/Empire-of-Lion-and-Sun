@@ -46,6 +46,7 @@ func _run_tests() -> void:
 	game.call("_place_building", Vector2(1100, 1700))
 	var buildings: Array = game.get("buildings")
 	assert(buildings.size() == 3, "Barracks, factory and depot were not all placed")
+	assert(float(buildings[0]["construction_remaining"]) > 0.0, "New building skipped its construction timer")
 
 	# A blocked placement must not spend resources or create another structure.
 	var credits_before_blocked_place: int = game.get("credits")
@@ -90,14 +91,18 @@ func _run_tests() -> void:
 	assert(restored_buildings.size() == 3, "Save/load did not restore buildings")
 	assert(restored_buildings[0]["queue"].size() == 1, "Save/load did not restore barracks queue")
 	assert(restored_buildings[1]["queue"].size() == 2, "Save/load did not restore factory queue")
+	assert(int(game.call("_resource_capacity")) == 1500, "Depot did not increase resource capacity")
 	assert(int(game.get("materials")) > 0, "Save/load did not restore materials")
 
 	# Advance production and ensure the barracks actually spawns a unit.
 	restored_buildings[0]["production_remaining"] = 0.01
+	restored_buildings[1]["production_remaining"] = 0.01
+	game.call("_update_buildings", 1.0)
+	restored_buildings[1]["production_remaining"] = 0.01
 	game.call("_update_buildings", 1.0)
 	var player_units: Array = game.get("player_units")
-	assert(player_units.size() == 4, "Barracks did not produce an infantry unit")
+	assert(player_units.size() == 6, "Barracks/factory did not produce infantry, tank and APC")
 
-	print("PASS: phase 1 navigation/save plus phase 2 construction, placement, queues, repair, upgrade and persistence")
+	print("PASS: phase 1 navigation/save plus phase 2 construction, placement, production, capacity, repair, upgrade and persistence")
 	game.queue_free()
 	quit()
