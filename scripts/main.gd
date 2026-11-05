@@ -38,6 +38,8 @@ var mouse_pan_active := false
 var hud_message := "Select units and capture the enemy command center."
 var selection_label: Label
 var pathfinder := AStarGrid2D.new()
+var pause_overlay: Control
+var is_paused := false
 
 @onready var camera: Camera2D = $Camera2D
 @onready var stats_label: Label = $HUD/Stats
@@ -57,6 +59,15 @@ func _ready() -> void:
 	_spawn_unit("apc", "enemy", ENEMY_BASE + Vector2(-150, 100))
 	_build_hud()
 	_update_hud()
+	_apply_saved_settings()
+	if get_tree().has_meta("load_saved_campaign"):
+		get_tree().remove_meta("load_saved_campaign")
+		_load_game()
+	else:
+		var tutorial_config := ConfigFile.new()
+		tutorial_config.load("user://settings.cfg")
+		if not bool(tutorial_config.get_value("gameplay", "tutorial_seen", false)):
+			_show_tutorial_overlay()
 	queue_redraw()
 
 
@@ -521,6 +532,7 @@ func _build_hud() -> void:
 	_add_hud_button(utility_row, "SELECT ALL", _select_all_player_units)
 	_add_hud_button(utility_row, "SAVE", _save_game)
 	_add_hud_button(utility_row, "LOAD", _load_game)
+	_add_hud_button(utility_row, "PAUSE", _toggle_pause)
 	selection_label = Label.new()
 	selection_label.text = "SELECTED: 0"
 	selection_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -795,6 +807,123 @@ func _restore_buildings(records: Array) -> void:
 			"queue": clean_queue,
 			"production_remaining": maxf(0.0, float(record.get("production_remaining", 0.0)))
 		})
+
+
+
+
+func _apply_saved_settings() -> void:
+	var config := ConfigFile.new()
+	config.load("user://settings.cfg")
+	AudioServer.set_bus_volume_linear(0, clampf(float(config.get_value("audio", "master_volume", 0.8)), 0.0, 1.0))
+	var fullscreen := bool(config.get_value("display", "fullscreen", true))
+	if OS.has_feature("android"):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	elif fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _toggle_pause() -> void:
+	if is_paused:
+		_resume_game()
+	else:
+		_show_pause_overlay()
+
+
+func _resume_game() -> void:
+	is_paused = false
+	get_tree().paused = false
+	if pause_overlay != null:
+		pause_overlay.queue_free()
+		pause_overlay = null
+
+
+func _show_pause_overlay() -> void:
+	if pause_overlay != null:
+		pause_overlay.queue_free()
+	pause_overlay = _create_overlay_panel()
+	var panel := _overlay_panel_node()
+	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 12)
+	panel.add_child(layout)
+	var title := Label.new()
+	title.text = "GAME PAUSED"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 26)
+	layout.add_child(title)
+	_add_overlay_button(layout, "RESUME", _resume_game)
+	_add_overlay_button(layout, "HOW TO PLAY", _show_tutorial_overlay)
+	_add_overlay_button(layout, "MAIN MENU", _return_to_menu)
+	is_paused = true
+	get_tree().paused = true
+
+
+func _show_tutorial_overlay() -> void:
+	if pause_overlay != null:
+		pause_overlay.queue_free()
+	pause_overlay = _create_overlay_panel()
+	var panel := _overlay_panel_node()
+	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 10)
+	panel.add_child(layout)
+	var title := Label.new()
+	title.text = "COMMANDER'S FIELD GUIDE"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	layout.add_child(title)
+	var guide := Label.new()
+	guide.text = "SELECT: tap a friendly unit. GROUP: drag a rectangle on empty ground.\nMOVE: tap the destination. Use two fingers to pan and pinch to zoom.\nBUILD: choose a building, then tap clear ground near your base.\nPRODUCE: barracks trains infantry; factory trains tanks and APCs.\nUPKEEP: select a building to repair or upgrade it.\nWIN: destroy the red enemy command center. Save your campaign regularly."
+	guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	guide.add_theme_font_size_override("font_size", 16)
+	layout.add_child(guide)
+	_add_overlay_button(layout, "GOT IT — RESUME", _close_tutorial)
+	is_paused = true
+	get_tree().paused = true
+
+
+func _create_overlay_panel() -> Control:
+	var overlay := Control.new()
+	overlay.name = "PauseOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	var shade := ColorRect.new()
+	shade.color = Color(0.015, 0.025, 0.035, 0.82)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.name = "DialogPanel"
+	panel.custom_minimum_size = Vector2(440, 0)
+	center.add_child(panel)
+	$HUD.add_child(overlay)
+	return overlay
+
+
+func _overlay_panel_node() -> PanelContainer:
+	return pause_overlay.get_node("CenterContainer/DialogPanel") as PanelContainer
+
+
+func _add_overlay_button(parent: VBoxContainer, caption: String, action: Callable) -> void:
+	var button := Button.new()
+	button.text = caption
+	button.custom_minimum_size = Vector2(0, 48)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.pressed.connect(action)
+	parent.add_child(button)
+
+
+func _close_tutorial() -> void:
+	var config := ConfigFile.new()
+	config.load("user://settings.cfg")
+	config.set_value("gameplay", "tutorial_seen", true)
+	config.save("user://settings.cfg")
+	_resume_game()
+
+
+func _return_to_menu() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
 
