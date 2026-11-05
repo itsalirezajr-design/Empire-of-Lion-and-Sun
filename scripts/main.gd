@@ -526,9 +526,12 @@ func _resource_capacity() -> int:
 
 func _building_cost(kind: String) -> Dictionary:
 	match kind:
-		"barracks": return {"credits": 250, "materials": 120, "time": 6.0}
-		"factory": return {"credits": 400, "materials": 220, "time": 9.0}
-		"depot": return {"credits": 180, "materials": 150, "time": 5.0}
+		"barracks":
+			return {"credits": 250, "materials": 120, "time": 6.0}
+		"factory":
+			return {"credits": 400, "materials": 220, "time": 9.0}
+		"depot":
+			return {"credits": 180, "materials": 150, "time": 5.0}
 	return {}
 
 
@@ -726,9 +729,10 @@ func _upgrade_selected_building() -> void:
 func _serialize_buildings() -> Array[Dictionary]:
 	var records: Array[Dictionary] = []
 	for building in buildings:
+		var building_pos: Vector2 = building["pos"]
 		records.append({
 			"kind": building["kind"], "team": building["team"],
-			"pos": [building["pos"].x, building["pos"].y],
+			"pos": [building_pos.x, building_pos.y],
 			"hp": building["hp"], "max_hp": building["max_hp"],
 			"level": building["level"],
 			"construction_remaining": building["construction_remaining"],
