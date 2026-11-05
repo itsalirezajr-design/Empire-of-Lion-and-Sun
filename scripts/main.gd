@@ -890,6 +890,7 @@ func _create_overlay_panel() -> Control:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(shade)
 	var center := CenterContainer.new()
+	center.name = "CenterContainer"
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
 	var panel := PanelContainer.new()
