@@ -26,6 +26,12 @@ var dragging := false
 var drag_end := Vector2.ZERO
 var match_over := false
 var match_message := ""
+var active_touches: Dictionary = {}
+var previous_pinch_distance := 0.0
+var previous_touch_midpoint := Vector2.ZERO
+var multitouch_used := false
+var mouse_pan_active := false
+var mouse_pan_last := Vector2.ZERO
 
 @onready var camera: Camera2D = $Camera2D
 @onready var stats_label: Label = $HUD/Stats
@@ -34,6 +40,8 @@ var match_message := ""
 func _ready() -> void:
 	camera.position = Vector2(1600, 1600)
 	camera.make_current()
+	camera.zoom = Vector2.ONE
+	_clamp_camera_position()
 	_spawn_unit("infantry", "player", PLAYER_BASE + Vector2(150, -100))
 	_spawn_unit("tank", "player", PLAYER_BASE + Vector2(220, 0))
 	_spawn_unit("apc", "player", PLAYER_BASE + Vector2(150, 100))
@@ -181,38 +189,104 @@ func _clamp_to_map(pos: Vector2) -> Vector2:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
+		var touch_id: int = event.index
 		if event.pressed:
-			touch_origin = event.position
-			drag_end = event.position
-			dragging = false
+			active_touches[touch_id] = event.position
+			if active_touches.size() == 1:
+				touch_origin = event.position
+				drag_end = event.position
+				dragging = false
+				multitouch_used = false
+			elif active_touches.size() >= 2:
+				multitouch_used = true
+				dragging = false
+				previous_pinch_distance = _touch_distance()
+				previous_touch_midpoint = _touch_midpoint()
 		else:
-			if dragging:
-				_select_in_rectangle(touch_origin, event.position)
-			else:
-				_handle_tap(event.position)
-			dragging = false
+			if active_touches.has(touch_id):
+				active_touches.erase(touch_id)
+			if active_touches.is_empty():
+				if not multitouch_used:
+					if dragging:
+						_select_in_rectangle(touch_origin, event.position)
+					else:
+						_handle_tap(event.position)
+				dragging = false
+				previous_pinch_distance = 0.0
+				multitouch_used = false
+			elif active_touches.size() == 1:
+				previous_pinch_distance = 0.0
+				previous_touch_midpoint = _touch_midpoint()
+			_clamp_camera_position()
 	elif event is InputEventScreenDrag:
-		drag_end = event.position
-		if touch_origin.distance_to(drag_end) > 14.0:
-			dragging = true
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			touch_origin = event.position
+		if active_touches.has(event.index):
+			active_touches[event.index] = event.position
+		if active_touches.size() >= 2:
+			multitouch_used = true
 			dragging = false
+			var midpoint := _touch_midpoint()
+			var distance := _touch_distance()
+			camera.position -= (midpoint - previous_touch_midpoint) / camera.zoom
+			if previous_pinch_distance > 1.0 and distance > 1.0:
+				var zoom_factor := distance / previous_pinch_distance
+				camera.zoom = (camera.zoom * zoom_factor).clamp(Vector2(0.55, 0.55), Vector2(1.8, 1.8))
+			previous_touch_midpoint = midpoint
+			previous_pinch_distance = distance
+			_clamp_camera_position()
 		else:
-			if dragging:
-				_select_in_rectangle(touch_origin, event.position)
+			drag_end = event.position
+			if touch_origin.distance_to(drag_end) > 14.0:
+				dragging = true
+	elif event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				touch_origin = event.position
+				dragging = false
 			else:
-				_handle_tap(event.position)
-			dragging = false
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		drag_end = event.position
-		if touch_origin.distance_to(drag_end) > 14.0:
-			dragging = true
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		camera.zoom = (camera.zoom * 1.08).clamp(Vector2(0.55, 0.55), Vector2(1.8, 1.8))
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-		camera.zoom = (camera.zoom / 1.08).clamp(Vector2(0.55, 0.55), Vector2(1.8, 1.8))
+				if dragging:
+					_select_in_rectangle(touch_origin, event.position)
+				else:
+					_handle_tap(event.position)
+				dragging = false
+		elif event.button_index == MOUSE_BUTTON_MIDDLE:
+			mouse_pan_active = event.pressed
+			mouse_pan_last = event.position
+		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			camera.zoom = (camera.zoom * 1.08).clamp(Vector2(0.55, 0.55), Vector2(1.8, 1.8))
+			_clamp_camera_position()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			camera.zoom = (camera.zoom / 1.08).clamp(Vector2(0.55, 0.55), Vector2(1.8, 1.8))
+			_clamp_camera_position()
+	elif event is InputEventMouseMotion and mouse_pan_active:
+		camera.position -= event.relative / camera.zoom
+		_clamp_camera_position()
+
+
+func _touch_midpoint() -> Vector2:
+	var points: Array = active_touches.values()
+	if points.size() < 2:
+		return Vector2.ZERO
+	return (points[0] + points[1]) * 0.5
+
+
+func _touch_distance() -> float:
+	var points: Array = active_touches.values()
+	if points.size() < 2:
+		return 0.0
+	return points[0].distance_to(points[1])
+
+
+func _clamp_camera_position() -> void:
+	var visible_size := get_viewport_rect().size / camera.zoom
+	var half_visible := visible_size * 0.5
+	var min_x := minf(half_visible.x, MAP_SIZE.x * 0.5)
+	var min_y := minf(half_visible.y, MAP_SIZE.y * 0.5)
+	var max_x := maxf(MAP_SIZE.x - half_visible.x, MAP_SIZE.x * 0.5)
+	var max_y := maxf(MAP_SIZE.y - half_visible.y, MAP_SIZE.y * 0.5)
+	camera.position = Vector2(
+		clampf(camera.position.x, min_x, max_x),
+		clampf(camera.position.y, min_y, max_y)
+	)
 
 
 func _select_in_rectangle(screen_a: Vector2, screen_b: Vector2) -> void:
