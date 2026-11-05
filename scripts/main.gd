@@ -31,7 +31,6 @@ var previous_pinch_distance := 0.0
 var previous_touch_midpoint := Vector2.ZERO
 var multitouch_used := false
 var mouse_pan_active := false
-var mouse_pan_last := Vector2.ZERO
 var hud_message := "Select units and capture the enemy command center."
 var selection_label: Label
 
@@ -285,7 +284,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				dragging = false
 		elif event.button_index == MOUSE_BUTTON_MIDDLE:
 			mouse_pan_active = event.pressed
-			mouse_pan_last = event.position
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			camera.zoom = (camera.zoom * 1.08).clamp(Vector2(0.55, 0.55), Vector2(1.8, 1.8))
 			_clamp_camera_position()
@@ -298,17 +296,23 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _touch_midpoint() -> Vector2:
-	var points: Array = active_touches.values()
-	if points.size() < 2:
+	var touch_ids: Array = active_touches.keys()
+	if touch_ids.size() < 2:
 		return Vector2.ZERO
-	return (points[0] + points[1]) * 0.5
+	touch_ids.sort()
+	var first: Vector2 = active_touches[touch_ids[0]]
+	var second: Vector2 = active_touches[touch_ids[1]]
+	return (first + second) * 0.5
 
 
 func _touch_distance() -> float:
-	var points: Array = active_touches.values()
-	if points.size() < 2:
+	var touch_ids: Array = active_touches.keys()
+	if touch_ids.size() < 2:
 		return 0.0
-	return points[0].distance_to(points[1])
+	touch_ids.sort()
+	var first: Vector2 = active_touches[touch_ids[0]]
+	var second: Vector2 = active_touches[touch_ids[1]]
+	return first.distance_to(second)
 
 
 func _clamp_camera_position() -> void:
@@ -559,8 +563,7 @@ func _draw_unit(unit: Dictionary) -> void:
 	var shadow := Color(0.03, 0.05, 0.04, 0.42)
 	var kind: String = unit["kind"]
 	var body_width := 23.0 if kind == "tank" else 19.0
-	var body_height := 13.0 if kind == "tank" else 11.0
-	# Soft ground shadow and selection ring.
+		# Soft ground shadow and selection ring.
 	draw_colored_polygon(PackedVector2Array([
 		pos + Vector2(0, 12), pos + Vector2(body_width + 8, 3),
 		pos + Vector2(0, -6), pos + Vector2(-body_width - 8, 3)
