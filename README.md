@@ -17,7 +17,7 @@ The first playable milestone focuses on the battle loop only:
 - Local JSON save/load for the current battle state
 - A small resource economy and a win/loss condition
 
-This is a prototype foundation, not the complete game. The source now includes placeable barracks, armor factory and resource depot, construction timers, production queues, resource capacity, building repair/upgrades, and versioned local persistence. Godot runtime validation and Android device/export testing are still pending. World-map country management, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
+This is a prototype foundation, not the complete game. The source now includes placeable barracks, armor factory and resource depot, construction timers, production queues, resource capacity, building repair/upgrades, and versioned local persistence. Godot headless CI validation is passing. A main menu, continue/new campaign, settings, in-game pause and tutorial have now been added. Android debug export is being automated; a successful artifact and physical-device test are still pending. World-map country management, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
 
 ## Project layout
 
@@ -30,7 +30,7 @@ This is a prototype foundation, not the complete game. The source now includes p
 
 ## Run
 
-Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; headless Godot CI validation is now passing, including the expanded phase 1/2 smoke tests. Interactive desktop/mobile playtesting, Android device testing, and APK export remain open. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
+Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; headless Godot CI validation is now passing, including the expanded phase 1/2 smoke tests. Interactive desktop/mobile playtesting and physical Android device testing remain open; an Android debug APK CI build has been added and is awaiting its first verified result. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
 
 ## Design decisions
 
