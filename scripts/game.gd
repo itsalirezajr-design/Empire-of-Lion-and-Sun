@@ -13,6 +13,7 @@ var score := 0
 var fire_cooldown := 0.0
 var is_reloading := false
 var reload_time := 0.0
+var fire_held := false
 var hud: Label
 var message: Label
 
@@ -21,9 +22,13 @@ func _ready() -> void:
 	_spawn_player()
 	_build_hud()
 	_spawn_targets()
+	if DisplayServer.is_touchscreen_available():
+		_build_mobile_controls()
 
 func _process(delta: float) -> void:
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	if fire_held:
+		_shoot()
 	if is_reloading:
 		reload_time -= delta
 		if reload_time <= 0.0:
@@ -78,7 +83,6 @@ func _add_box(label: String, pos: Vector3, size: Vector3, color: Color) -> void:
 	var body := StaticBody3D.new()
 	body.name = label
 	body.position = pos
-
 	var mesh_instance := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -88,7 +92,6 @@ func _add_box(label: String, pos: Vector3, size: Vector3, color: Color) -> void:
 	mat.roughness = 0.85
 	mesh_instance.material_override = mat
 	body.add_child(mesh_instance)
-
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = size
@@ -117,7 +120,6 @@ func _create_target(pos: Vector3, index: int) -> void:
 	target.name = "Target_%d" % index
 	target.position = pos + Vector3(0, 1.0, 0)
 	target.add_to_group("shootable")
-
 	var mesh_instance := MeshInstance3D.new()
 	var mesh := CapsuleMesh.new()
 	mesh.radius = 0.42
@@ -128,7 +130,6 @@ func _create_target(pos: Vector3, index: int) -> void:
 	mat.metallic = 0.15
 	mesh_instance.material_override = mat
 	target.add_child(mesh_instance)
-
 	var collision := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.42
@@ -140,7 +141,6 @@ func _create_target(pos: Vector3, index: int) -> void:
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-
 	hud = Label.new()
 	hud.position = Vector2(24, 22)
 	hud.add_theme_font_size_override("font_size", 22)
@@ -159,7 +159,7 @@ func _build_hud() -> void:
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.add_theme_font_size_override("font_size", 16)
 	message.add_theme_color_override("font_color", Color(0.92, 0.94, 1.0))
-	message.text = "WASD حرکت | Shift دویدن | Space پرش | کلیک چپ شلیک | R خشاب | Esc نشانگر ماوس"
+	message.text = "موبایل: سمت چپ حرکت | سمت راست نگاه | دکمه‌ها شلیک و پرش"
 	layer.add_child(message)
 
 	var crosshair := Label.new()
@@ -176,19 +176,55 @@ func _build_hud() -> void:
 	crosshair.add_theme_font_size_override("font_size", 30)
 	crosshair.add_theme_color_override("font_color", Color(0.85, 1.0, 0.9))
 	layer.add_child(crosshair)
-	_update_hud()
+
+func _build_mobile_controls() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "MobileControls"
+	add_child(layer)
+
+	var fire_button := _make_touch_button(layer, "FIRE", Vector2(-118, -150), Vector2(104, 104))
+	fire_button.button_down.connect(func(): fire_held = true)
+	fire_button.button_up.connect(func(): fire_held = false)
+
+	var reload_button := _make_touch_button(layer, "RELOAD", Vector2(-230, -94), Vector2(92, 58))
+	reload_button.pressed.connect(_reload)
+
+	var jump_button := _make_touch_button(layer, "JUMP", Vector2(-118, -270), Vector2(86, 62))
+	jump_button.button_down.connect(func(): Input.action_press("jump"))
+	jump_button.button_up.connect(func(): Input.action_release("jump"))
+
+	var sprint_button := _make_touch_button(layer, "RUN", Vector2(-230, -170), Vector2(86, 58))
+	sprint_button.button_down.connect(func(): Input.action_press("sprint"))
+	sprint_button.button_up.connect(func(): Input.action_release("sprint"))
+
+func _make_touch_button(parent: CanvasLayer, caption: String, offset: Vector2, button_size: Vector2) -> Button:
+	var button := Button.new()
+	button.text = caption
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = button_size
+	button.anchor_left = 1.0
+	button.anchor_top = 1.0
+	button.anchor_right = 1.0
+	button.anchor_bottom = 1.0
+	button.offset_left = offset.x
+	button.offset_top = offset.y
+	button.offset_right = offset.x + button_size.x
+	button.offset_bottom = offset.y + button_size.y
+	button.add_theme_font_size_override("font_size", 18)
+	button.add_theme_color_override("font_color", Color.WHITE)
+	parent.add_child(button)
+	return button
 
 func _update_hud() -> void:
 	if is_instance_valid(hud):
 		var state := "در حال بارگذاری خشاب..." if is_reloading else ""
-		hud.text = "STRIKE ZONE     امتیاز: %d\nAK-STYLE RIFLE   %02d / %02d   %s" % [score, ammo, reserve_ammo, state]
+		hud.text = "STRIKE ZONE     امتیاز: %d\nRIFLE   %02d / %02d   %s" % [score, ammo, reserve_ammo, state]
 
 func _shoot() -> void:
 	if is_reloading or fire_cooldown > 0.0 or ammo <= 0:
 		if ammo <= 0 and not is_reloading:
 			_reload()
 		return
-
 	ammo -= 1
 	fire_cooldown = FIRE_INTERVAL
 	var camera := player.get_node("Camera3D") as Camera3D
@@ -197,7 +233,6 @@ func _shoot() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.exclude = [player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-
 	if not hit.is_empty() and hit.collider is Node and hit.collider.is_in_group("shootable"):
 		score += 100
 		hit.collider.queue_free()
