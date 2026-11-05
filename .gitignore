@@ -1,0 +1,15 @@
+# Godot generated files
+.godot/
+.import/
+
+# Android exports and local signing keys
+build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Local editor and operating-system files
+.export/
+.DS_Store
+Thumbs.db
