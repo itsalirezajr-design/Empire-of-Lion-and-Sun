@@ -347,6 +347,11 @@ func _build_hud() -> void:
 	top_panel.offset_bottom = 88.0
 	hud.add_child(top_panel)
 	stats_label.reparent(top_panel)
+	stats_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	stats_label.offset_left = 8.0
+	stats_label.offset_top = 4.0
+	stats_label.offset_right = -8.0
+	stats_label.offset_bottom = -4.0
 	stats_label.custom_minimum_size = Vector2(0, 64)
 	stats_label.add_theme_font_size_override("font_size", 16)
 	stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
