@@ -352,9 +352,11 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(12, 12), MAP_SIZE - Vector2(24, 24)), Color(0.55, 0.67, 0.49, 0.8), false, 5.0)
 	_draw_base(PLAYER_BASE, Color(0.2, 0.55, 0.95), player_base_hp)
 	_draw_base(ENEMY_BASE, Color(0.9, 0.25, 0.2), enemy_base_hp)
-	for unit in player_units:
-		_draw_unit(unit)
-	for unit in enemy_units:
+	var render_units: Array[Dictionary] = []
+	render_units.append_array(player_units)
+	render_units.append_array(enemy_units)
+	render_units.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["pos"].y < b["pos"].y)
+	for unit in render_units:
 		_draw_unit(unit)
 	if dragging:
 		var a := _screen_to_world(touch_origin)
@@ -363,18 +365,95 @@ func _draw() -> void:
 		draw_rect(Rect2(a, b - a).abs(), Color(0.4, 0.85, 1.0, 0.9), false, 2.0)
 
 func _draw_base(pos: Vector2, tint: Color, hp: float) -> void:
-	draw_colored_polygon(PackedVector2Array([pos + Vector2(0, -95), pos + Vector2(125, 0), pos + Vector2(0, 95), pos + Vector2(-125, 0)]), tint.darkened(0.25))
-	draw_rect(Rect2(pos + Vector2(-65, -10), Vector2(130, 14)), Color(0.12, 0.12, 0.12), true)
-	draw_rect(Rect2(pos + Vector2(-65, -10), Vector2(130.0 * clampf(hp / 1200.0, 0.0, 1.0), 14)), Color(0.2, 0.9, 0.35), true)
+	# Command center: layered isometric platform, walls and central control tower.
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(0, -112), pos + Vector2(150, -8),
+		pos + Vector2(0, 96), pos + Vector2(-150, -8)
+	]), Color(0.08, 0.10, 0.11, 0.65))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(0, -102), pos + Vector2(137, -7),
+		pos + Vector2(0, 88), pos + Vector2(-137, -7)
+	]), tint.darkened(0.38))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-66, -12), pos + Vector2(-25, -42),
+		pos + Vector2(23, -15), pos + Vector2(-18, 15)
+	]), tint.lightened(0.12))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-18, -42), pos + Vector2(35, -76),
+		pos + Vector2(84, -48), pos + Vector2(31, -17)
+	]), tint.darkened(0.12))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-18, -42), pos + Vector2(31, -17),
+		pos + Vector2(31, 28), pos + Vector2(-18, 0)
+	]), tint.darkened(0.42))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(31, -17), pos + Vector2(84, -48),
+		pos + Vector2(84, -4), pos + Vector2(31, 28)
+	]), tint.darkened(0.30))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-18, -42), pos + Vector2(35, -76),
+		pos + Vector2(84, -48), pos + Vector2(31, -17)
+	]), tint.lightened(0.22))
+	draw_rect(Rect2(pos + Vector2(-65, -126), Vector2(130, 7)), Color(0.08, 0.08, 0.08), true)
+	draw_rect(Rect2(pos + Vector2(-65, -126), Vector2(130.0 * clampf(hp / 1200.0, 0.0, 1.0), 7)), Color(0.2, 0.9, 0.35), true)
 
 
 func _draw_unit(unit: Dictionary) -> void:
 	var pos: Vector2 = unit["pos"]
-	var tint := Color(0.25, 0.7, 1.0) if unit["team"] == "player" else Color(1.0, 0.32, 0.25)
-	var size := 22.0 if unit["kind"] == "tank" else 16.0
-	var diamond := PackedVector2Array([pos + Vector2(0, -size), pos + Vector2(size, 0), pos + Vector2(0, size * 0.65), pos + Vector2(-size, 0)])
-	draw_colored_polygon(diamond, tint)
-	draw_rect(Rect2(pos + Vector2(-18, -size - 10), Vector2(36, 4)), Color(0.08, 0.08, 0.08), true)
-	draw_rect(Rect2(pos + Vector2(-18, -size - 10), Vector2(36.0 * clampf(float(unit["hp"]) / float(unit["max_hp"]), 0.0, 1.0), 4)), Color(0.2, 0.9, 0.35), true)
+	var is_player: bool = unit["team"] == "player"
+	var tint := Color(0.25, 0.68, 0.96) if is_player else Color(0.92, 0.28, 0.22)
+	var shadow := Color(0.03, 0.05, 0.04, 0.42)
+	var kind: String = unit["kind"]
+	var body_width := 23.0 if kind == "tank" else 19.0
+	var body_height := 13.0 if kind == "tank" else 11.0
+	# Soft ground shadow and selection ring.
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(0, 12), pos + Vector2(body_width + 8, 3),
+		pos + Vector2(0, -6), pos + Vector2(-body_width - 8, 3)
+	]), shadow)
 	if selected_units.has(unit):
-		draw_arc(pos, size + 9.0, 0.0, TAU, 32, Color(1.0, 0.9, 0.25), 3.0)
+		draw_arc(pos + Vector2(0, 2), 31.0, 0.0, TAU, 40, Color(1.0, 0.88, 0.22), 3.0)
+	# Unit silhouettes use layered polygons to read clearly at mobile scale.
+	if kind == "infantry":
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(0, -22), pos + Vector2(9, -13),
+			pos + Vector2(7, 5), pos + Vector2(-7, 5),
+			pos + Vector2(-9, -13)
+		]), tint.darkened(0.28))
+		draw_circle(pos + Vector2(0, -20), 6.0, tint.lightened(0.18))
+		draw_line(pos + Vector2(7, -12), pos + Vector2(18, -18), Color(0.12, 0.13, 0.12), 3.0)
+	elif kind == "tank":
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(-25, -1), pos + Vector2(-15, -13),
+			pos + Vector2(17, -13), pos + Vector2(26, -1),
+			pos + Vector2(15, 12), pos + Vector2(-16, 12)
+		]), Color(0.10, 0.12, 0.11))
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(-20, -3), pos + Vector2(-12, -10),
+			pos + Vector2(13, -10), pos + Vector2(21, -3),
+			pos + Vector2(13, 8), pos + Vector2(-13, 8)
+		]), tint.darkened(0.18))
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(-10, -7), pos + Vector2(4, -16),
+			pos + Vector2(15, -10), pos + Vector2(1, -2)
+		]), tint.lightened(0.18))
+		draw_line(pos + Vector2(5, -11), pos + Vector2(26, -23), Color(0.12, 0.14, 0.13), 5.0)
+		draw_circle(pos + Vector2(2, -8), 5.0, Color(0.16, 0.18, 0.16))
+	else:
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(-25, -2), pos + Vector2(-16, -12),
+			pos + Vector2(17, -12), pos + Vector2(26, -2),
+			pos + Vector2(17, 11), pos + Vector2(-18, 11)
+		]), Color(0.12, 0.14, 0.13))
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(-19, -4), pos + Vector2(-12, -9),
+			pos + Vector2(13, -9), pos + Vector2(20, -3),
+			pos + Vector2(13, 7), pos + Vector2(-14, 7)
+		]), tint)
+		draw_colored_polygon(PackedVector2Array([
+			pos + Vector2(-9, -7), pos + Vector2(3, -13),
+			pos + Vector2(12, -8), pos + Vector2(0, -2)
+		]), tint.lightened(0.22))
+	# Health bar remains readable above every unit.
+	draw_rect(Rect2(pos + Vector2(-19, -35), Vector2(38, 5)), Color(0.06, 0.07, 0.07), true)
+	draw_rect(Rect2(pos + Vector2(-19, -35), Vector2(38.0 * clampf(float(unit["hp"]) / float(unit["max_hp"]), 0.0, 1.0), 5)), Color(0.22, 0.92, 0.38), true)
