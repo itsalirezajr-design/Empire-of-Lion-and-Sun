@@ -44,7 +44,7 @@ func _run_tests() -> void:
 	game.call("_place_building", Vector2(1300, 1400))
 	game.call("_begin_build_depot")
 	game.call("_place_building", Vector2(1100, 1700))
-	var buildings: Array = game.get("buildings")
+	var buildings: Array[Dictionary] = game.get("buildings")
 	assert(buildings.size() == 3, "Barracks, factory and depot were not all placed")
 	assert(float(buildings[0]["construction_remaining"]) > 0.0, "New building skipped its construction timer")
 
@@ -64,7 +64,7 @@ func _run_tests() -> void:
 	assert(buildings[1]["queue"].size() == 2, "Armored units were not queued at factory")
 
 	# Enemy AI must attack a nearby friendly structure rather than ignoring it.
-	var enemy_units: Array = game.get("enemy_units")
+	var enemy_units: Array[Dictionary] = game.get("enemy_units")
 	game.call("_spawn_unit", "infantry", "enemy", buildings[0]["pos"] + Vector2(0, 80))
 	var no_opponents: Array[Dictionary] = []
 	var building_hp_before_attack: float = buildings[0]["hp"]
@@ -87,7 +87,7 @@ func _run_tests() -> void:
 	game.set("materials", 0)
 	game.call("_load_game")
 	assert(int(game.get("credits")) == saved_credits, "Save/load did not restore credits")
-	var restored_buildings: Array = game.get("buildings")
+	var restored_buildings: Array[Dictionary] = game.get("buildings")
 	assert(restored_buildings.size() == 3, "Save/load did not restore buildings")
 	assert(restored_buildings[0]["queue"].size() == 1, "Save/load did not restore barracks queue")
 	assert(restored_buildings[1]["queue"].size() == 2, "Save/load did not restore factory queue")
