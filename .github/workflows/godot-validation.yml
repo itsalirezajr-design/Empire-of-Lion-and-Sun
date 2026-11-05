@@ -7,12 +7,14 @@ on:
       - "project.godot"
       - "scenes/**"
       - "scripts/**"
+      - "tests/**"
       - ".github/workflows/godot-validation.yml"
   pull_request:
     paths:
       - "project.godot"
       - "scenes/**"
       - "scripts/**"
+      - "tests/**"
 
 jobs:
   validate:
