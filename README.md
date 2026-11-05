@@ -1,44 +1,32 @@
-# Empire of Lion and Sun
+# Strike Zone — شوتر اول‌شخص تاکتیکی
 
-**Modern mobile RTS — Android / Godot 4**
+این مخزن از این نسخه به بعد پروژه قبلی Empire of Lion and Sun نیست؛ پایه‌ی یک بازی شوتر اول‌شخص الهام‌گرفته از Counter-Strike است.
 
-A real-time strategy game set in a modern-day world (starting in 2026). The long-term vision combines a world-management layer with separate large, isometric operational battlefields.
+## وضعیت فعلی
+- نمونه‌ی اولیه‌ی سه‌بعدی در Godot 4.4
+- حرکت اول‌شخص، چرخش دوربین با ماوس، دویدن و پرش
+- شلیک hitscan، خشاب ۳۰ تایی و تعویض خشاب
+- محوطه‌ی تمرینی با موانع و هدف‌های قابل‌اصابت
+- امتیازدهی و رابط کاربری ساده
 
-## Current milestone: MVP 0.1
+## کنترل‌ها
+- WASD: حرکت
+- Mouse: نشانه‌گیری
+- Left Click: شلیک
+- R: تعویض خشاب
+- Shift: دویدن
+- Space: پرش
+- Esc: آزاد/قفل کردن نشانگر ماوس
 
-The first playable milestone focuses on the battle loop only:
-- Large 2D battlefield rendered in an isometric-inspired style, with static terrain separated from dynamic units
-- Continuous real-time simulation
-- Touch/mouse selection, two-finger camera pan, pinch zoom, and group movement formations
-- Mobile command HUD with unit recruitment, stop, and select-all controls
-- Three unit roles: infantry, tank, and APC
-- A* grid pathfinding around a blocked river, with a road bridge
-- Basic automatic combat and a simple enemy AI
-- Local JSON save/load for the current battle state
-- A small resource economy and a win/loss condition
+## اجرا
+پروژه را با Godot 4.4 یا جدیدتر باز کنید و صحنه‌ی اصلی را اجرا کنید.
 
-This is a prototype foundation, not the complete game. The source now includes placeable barracks, armor factory and resource depot, construction timers, production queues, resource capacity, building repair/upgrades, and versioned local persistence. Godot headless CI validation is passing. A main menu, continue/new campaign, settings, in-game pause and tutorial have now been added. An ARM64 Android debug APK has now been built successfully in CI, its ZIP integrity and APK signature have been verified, and the artifact is available from the Android Actions run. Physical-device installation and touch/performance testing remain pending. World-map country management, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
+## نقشه راه
+1. پایه‌ی شوتر اول‌شخص و میدان تمرین
+2. سلاح‌های قابل انتخاب، لگد اسلحه، پخش تیر و انیمیشن‌ها
+3. تیم‌ها، راند، بمب‌گذاری و خنثی‌سازی
+4. بات‌های تیمی و رفتار تاکتیکی
+5. رابط لمسی و خروجی Android
+6. چندنفره LAN و سپس سرور آنلاین
 
-## Project layout
-
-- `project.godot` — Godot project settings
-- `scenes/Main.tscn` — main prototype scene
-- `scripts/main.gd` — battle loop, controls, A* pathfinding, combat, HUD, and local save/load
-- `scripts/terrain.gd` — static isometric terrain and river/road rendering
-- `docs/MVP_0.1_FA.md` — technical MVP specification (Persian)
-- `docs/ROADMAP_FA.md` — phased development plan (Persian)
-- `docs/ANDROID_BUILD_FA.md` — Android APK build, download, and installation guide (Persian)
-
-## Run
-
-Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; headless Godot CI validation is now passing, including the expanded phase 1/2 smoke tests. The Android debug APK build and signature verification have passed. Physical Android device installation, touch/performance testing, and a separate release-signed build remain open. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
-
-## Design decisions
-
-- Setting: modern day, 2026
-- Genre: continuous real-time strategy (RTS)
-- Camera: isometric-inspired 2D presentation
-- Battle scale: large map, streamed/partitioned in later iterations
-- Target: Android phones and tablets
-- Planned modes: offline AI, online multiplayer, local Wi-Fi/hotspot multiplayer
-- Engine: Godot 4.x
+این پروژه فعلاً نمونه‌ی اولیه است؛ هنوز نسخه‌ی کامل یا APK جدیدی ساخته نشده است.
