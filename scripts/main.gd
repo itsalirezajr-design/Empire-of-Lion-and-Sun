@@ -32,6 +32,8 @@ var previous_touch_midpoint := Vector2.ZERO
 var multitouch_used := false
 var mouse_pan_active := false
 var mouse_pan_last := Vector2.ZERO
+var hud_message := "Select units and capture the enemy command center."
+var selection_label: Label
 
 @onready var camera: Camera2D = $Camera2D
 @onready var stats_label: Label = $HUD/Stats
@@ -48,6 +50,7 @@ func _ready() -> void:
 	_spawn_unit("infantry", "enemy", ENEMY_BASE + Vector2(-150, -100))
 	_spawn_unit("tank", "enemy", ENEMY_BASE + Vector2(-220, 0))
 	_spawn_unit("apc", "enemy", ENEMY_BASE + Vector2(-150, 100))
+	_build_hud()
 	_update_hud()
 	queue_redraw()
 
@@ -330,8 +333,118 @@ func _select_in_rectangle(screen_a: Vector2, screen_b: Vector2) -> void:
 			selected_units.append(unit)
 
 
+func _build_hud() -> void:
+	var hud: CanvasLayer = $HUD
+	var top_panel := PanelContainer.new()
+	top_panel.name = "TopStatusPanel"
+	top_panel.anchor_left = 0.0
+	top_panel.anchor_top = 0.0
+	top_panel.anchor_right = 1.0
+	top_panel.anchor_bottom = 0.0
+	top_panel.offset_left = 12.0
+	top_panel.offset_top = 10.0
+	top_panel.offset_right = -12.0
+	top_panel.offset_bottom = 88.0
+	hud.add_child(top_panel)
+	stats_label.reparent(top_panel)
+	stats_label.custom_minimum_size = Vector2(0, 64)
+	stats_label.add_theme_font_size_override("font_size", 16)
+	stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var bottom_panel := PanelContainer.new()
+	bottom_panel.name = "CommandPanel"
+	bottom_panel.anchor_left = 0.0
+	bottom_panel.anchor_top = 1.0
+	bottom_panel.anchor_right = 1.0
+	bottom_panel.anchor_bottom = 1.0
+	bottom_panel.offset_left = 12.0
+	bottom_panel.offset_top = -82.0
+	bottom_panel.offset_right = -12.0
+	bottom_panel.offset_bottom = -10.0
+	hud.add_child(bottom_panel)
+	var commands := HBoxContainer.new()
+	commands.add_theme_constant_override("separation", 8)
+	bottom_panel.add_child(commands)
+	_add_hud_button(commands, "INFANTRY", _recruit_infantry)
+	_add_hud_button(commands, "TANK", _recruit_tank)
+	_add_hud_button(commands, "APC", _recruit_apc)
+	_add_hud_button(commands, "STOP", _stop_selected_units)
+	_add_hud_button(commands, "SELECT ALL", _select_all_player_units)
+	selection_label = Label.new()
+	selection_label.text = "SELECTED: 0"
+	selection_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	selection_label.add_theme_font_size_override("font_size", 14)
+	commands.add_child(selection_label)
+
+
+func _add_hud_button(parent: HBoxContainer, caption: String, action: Callable) -> void:
+	var button := Button.new()
+	button.text = caption
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.custom_minimum_size = Vector2(105, 54)
+	button.add_theme_font_size_override("font_size", 14)
+	button.pressed.connect(action)
+	parent.add_child(button)
+
+
+func _recruit_unit(kind: String) -> void:
+	if match_over:
+		return
+	var cost_credits := 100
+	var cost_fuel := 0
+	var cost_materials := 40
+	match kind:
+		"tank":
+			cost_credits = 220
+			cost_fuel = 60
+			cost_materials = 90
+		"apc":
+			cost_credits = 180
+			cost_fuel = 35
+			cost_materials = 70
+	if credits < cost_credits or fuel < cost_fuel or materials < cost_materials:
+		hud_message = "Not enough resources to recruit " + kind.to_upper() + "."
+		_update_hud()
+		return
+	credits -= cost_credits
+	fuel -= cost_fuel
+	materials -= cost_materials
+	var spawn_offset := Vector2(randf_range(110.0, 190.0), randf_range(-150.0, 150.0))
+	_spawn_unit(kind, "player", _clamp_to_map(PLAYER_BASE + spawn_offset))
+	hud_message = kind.to_upper() + " recruited."
+	_update_hud()
+
+
+func _recruit_infantry() -> void:
+	_recruit_unit("infantry")
+
+
+func _recruit_tank() -> void:
+	_recruit_unit("tank")
+
+
+func _recruit_apc() -> void:
+	_recruit_unit("apc")
+
+
+func _stop_selected_units() -> void:
+	for unit in selected_units:
+		unit["destination"] = unit["pos"]
+	hud_message = "Selected units stopped."
+	_update_hud()
+
+
+func _select_all_player_units() -> void:
+	selected_units.clear()
+	selected_units.append_array(player_units)
+	hud_message = "All friendly units selected."
+	_update_hud()
+	queue_redraw()
+
+
 func _update_hud() -> void:
-	stats_label.text = "EMPIRE OF LION AND SUN   |   CREDITS %d   FUEL %d   MATERIALS %d\nPLAYER BASE %.0f HP   |   ENEMY BASE %.0f HP   |   UNITS %d   |   %.0f SEC" % [credits, fuel, materials, player_base_hp, enemy_base_hp, player_units.size(), elapsed]
+	stats_label.text = "EMPIRE OF LION AND SUN  |  CREDITS %d   FUEL %d   MATERIALS %d\nBASE %.0f HP  |  ENEMY %.0f HP  |  ARMY %d  |  %.0f SEC\n%s" % [credits, fuel, materials, player_base_hp, enemy_base_hp, player_units.size(), elapsed, hud_message]
+	if selection_label != null:
+		selection_label.text = "SELECTED: %d" % selected_units.size()
 	if match_over:
 		stats_label.text += "\n" + match_message
 
