@@ -20,6 +20,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Configure Android export tools for the runner user
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates" "$HOME/.config/godot"
+          cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
+          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<'EOF'
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
+          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          export/android/force_system_user = false
+          export/android/timestamping_authority_url = ""
+          EOF
       - name: Import project
         run: godot --headless --editor --path . --quit
       - name: Run phase 1 and 2 gameplay tests
@@ -27,6 +42,10 @@ jobs:
       - name: Run phase 3 menu tests
         run: godot --headless --path . --script res://tests/phase3_ui_smoke.gd
       - name: Build Android debug APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p build
           godot --headless --path . --export-debug "Android" build/EmpireOfLionAndSun-debug.apk
