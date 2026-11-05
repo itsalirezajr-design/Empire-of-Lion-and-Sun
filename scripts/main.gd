@@ -194,14 +194,27 @@ func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: 
 		unit["cooldown"] = maxf(0.0, float(unit["cooldown"]) - delta)
 		var pos: Vector2 = unit["pos"]
 		var target: Dictionary = _nearest_enemy(pos, opponents)
+		var target_building: Dictionary = {}
+		if not is_player and target.is_empty():
+			target_building = _nearest_player_building(pos)
 		if not target.is_empty() and pos.distance_to(target["pos"]) <= ATTACK_RANGE:
 			if float(unit["cooldown"]) <= 0.0:
 				target["hp"] = float(target["hp"]) - float(unit["damage"])
 				unit["cooldown"] = ATTACK_INTERVAL
+		elif not target_building.is_empty() and pos.distance_to(target_building["pos"]) <= ATTACK_RANGE:
+			if float(unit["cooldown"]) <= 0.0:
+				target_building["hp"] = float(target_building["hp"]) - float(unit["damage"])
+				unit["cooldown"] = ATTACK_INTERVAL
+				if float(target_building["hp"]) <= 0.0:
+					if selected_building == target_building:
+						selected_building = {}
+					buildings.erase(target_building)
+					hud_message = "A friendly building was destroyed."
 		else:
 			var destination: Vector2 = unit["destination"]
-			if not is_player and pos.distance_to(PLAYER_BASE) > 150.0:
-				destination = PLAYER_BASE
+			if not is_player:
+				var strategic_target := _nearest_player_building(pos)
+				destination = strategic_target["pos"] if not strategic_target.is_empty() else PLAYER_BASE
 				if unit["destination"].distance_to(destination) > 20.0:
 					_set_unit_destination(unit, destination)
 			var route: Array = unit["path"]
@@ -236,6 +249,19 @@ func _nearest_enemy(pos: Vector2, opponents: Array[Dictionary]) -> Dictionary:
 		if distance < best_distance and float(candidate["hp"]) > 0.0:
 			best_distance = distance
 			nearest = candidate
+	return nearest
+
+
+func _nearest_player_building(pos: Vector2) -> Dictionary:
+	var nearest: Dictionary = {}
+	var best_distance := INF
+	for building in buildings:
+		if building["team"] != "player" or float(building["hp"]) <= 0.0:
+			continue
+		var distance: float = pos.distance_to(building["pos"])
+		if distance < best_distance:
+			best_distance = distance
+			nearest = building
 	return nearest
 
 
