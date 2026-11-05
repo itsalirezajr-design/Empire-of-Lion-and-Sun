@@ -33,6 +33,7 @@ var multitouch_used := false
 var mouse_pan_active := false
 var hud_message := "Select units and capture the enemy command center."
 var selection_label: Label
+var pathfinder := AStarGrid2D.new()
 
 @onready var camera: Camera2D = $Camera2D
 @onready var stats_label: Label = $HUD/Stats
@@ -43,6 +44,7 @@ func _ready() -> void:
 	camera.make_current()
 	camera.zoom = Vector2.ONE
 	_clamp_camera_position()
+	_setup_pathfinding()
 	_spawn_unit("infantry", "player", PLAYER_BASE + Vector2(150, -100))
 	_spawn_unit("tank", "player", PLAYER_BASE + Vector2(220, 0))
 	_spawn_unit("apc", "player", PLAYER_BASE + Vector2(150, 100))
@@ -81,6 +83,56 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+
+func _setup_pathfinding() -> void:
+	pathfinder.region = Rect2i(0, 0, ISO_GRID_SIZE, ISO_GRID_SIZE)
+	pathfinder.cell_size = Vector2.ONE
+	pathfinder.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	pathfinder.update()
+	# The river blocks movement except at the road crossing, which acts as a bridge.
+	for row in range(4, 61):
+		var river_column := 29 + int(sin(float(row) * 0.22) * 5.0)
+		for offset in range(-1, 2):
+			var column := river_column + offset
+			var is_bridge := row >= 29 and row <= 35
+			if not is_bridge and column >= 0 and column < ISO_GRID_SIZE:
+				pathfinder.set_point_solid(Vector2i(column, row), true)
+
+
+func _world_to_grid(world_pos: Vector2) -> Vector2i:
+	var u := (world_pos.x - 1600.0) / (ISO_TILE_WIDTH * 0.5)
+	var v := world_pos.y / (ISO_TILE_HEIGHT * 0.5)
+	var column := int(round((u + v) * 0.5))
+	var row := int(round((v - u) * 0.5))
+	return Vector2i(
+		clampi(column, 0, ISO_GRID_SIZE - 1),
+		clampi(row, 0, ISO_GRID_SIZE - 1)
+	)
+
+
+func _grid_to_world(cell: Vector2i) -> Vector2:
+	return Vector2(
+		1600.0 + float(cell.x - cell.y) * ISO_TILE_WIDTH * 0.5,
+		float(cell.x + cell.y) * ISO_TILE_HEIGHT * 0.5
+	)
+
+
+func _set_unit_destination(unit: Dictionary, destination: Vector2) -> void:
+	var start_cell := _world_to_grid(unit["pos"])
+	var end_cell := _world_to_grid(_clamp_to_map(destination))
+	var cell_path: Array[Vector2i] = pathfinder.get_id_path(start_cell, end_cell)
+	var world_path: Array[Vector2] = []
+	for i in range(1, cell_path.size()):
+		world_path.append(_grid_to_world(cell_path[i]))
+	if world_path.is_empty() and start_cell != end_cell:
+		world_path.append(_clamp_to_map(destination))
+	elif not world_path.is_empty():
+		world_path.append(_clamp_to_map(destination))
+	unit["destination"] = _clamp_to_map(destination)
+	unit["path"] = world_path
+	unit["path_index"] = 0
+
+
 func _spawn_unit(kind: String, team: String, at: Vector2) -> void:
 	var unit := {
 		"kind": kind,
@@ -91,7 +143,9 @@ func _spawn_unit(kind: String, team: String, at: Vector2) -> void:
 		"max_hp": 100.0,
 		"speed": UNIT_SPEED,
 		"damage": 12.0,
-		"cooldown": randf_range(0.0, 0.4)
+		"cooldown": randf_range(0.0, 0.4),
+		"path": [],
+		"path_index": 0
 	}
 	match kind:
 		"tank":
@@ -108,6 +162,7 @@ func _spawn_unit(kind: String, team: String, at: Vector2) -> void:
 		player_units.append(unit)
 	else:
 		enemy_units.append(unit)
+		_set_unit_destination(unit, PLAYER_BASE)
 
 
 func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: float, is_player: bool) -> void:
@@ -122,14 +177,20 @@ func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: 
 				unit["cooldown"] = ATTACK_INTERVAL
 		else:
 			var destination: Vector2 = unit["destination"]
-			if not is_player:
+			if not is_player and pos.distance_to(PLAYER_BASE) > 150.0:
 				destination = PLAYER_BASE
-			if pos.distance_to(destination) > 7.0:
-				var avoidance := _separation_vector(unit, team)
-				var desired := (destination - pos).normalized()
-				var steering := (desired + avoidance * 0.85).normalized()
-				pos = pos.move_toward(pos + steering * 1000.0, float(unit["speed"]) * delta)
-				unit["pos"] = _clamp_to_map(pos)
+				if unit["destination"].distance_to(destination) > 20.0:
+					_set_unit_destination(unit, destination)
+			var route: Array = unit["path"]
+			var route_index: int = int(unit["path_index"])
+			if route_index < route.size():
+				var waypoint: Vector2 = route[route_index]
+				if pos.distance_to(waypoint) <= 10.0:
+					route_index += 1
+					unit["path_index"] = route_index
+				else:
+					pos = pos.move_toward(waypoint, float(unit["speed"]) * delta)
+					unit["pos"] = _clamp_to_map(pos)
 			elif is_player:
 				if pos.distance_to(ENEMY_BASE) <= 150.0 and float(unit["cooldown"]) <= 0.0:
 					enemy_base_hp -= float(unit["damage"])
