@@ -1,11 +1,14 @@
 extends Node2D
 
-const MAP_SIZE := Vector2(3200, 2200)
+const MAP_SIZE := Vector2(3200, 3200)
+const ISO_TILE_WIDTH := 96.0
+const ISO_TILE_HEIGHT := 48.0
+const ISO_GRID_SIZE := 64
 const UNIT_SPEED := 115.0
 const ATTACK_RANGE := 145.0
 const ATTACK_INTERVAL := 0.85
-const PLAYER_BASE := Vector2(320, 1100)
-const ENEMY_BASE := Vector2(2880, 1100)
+const PLAYER_BASE := Vector2(320, 1600)
+const ENEMY_BASE := Vector2(2880, 1600)
 
 var player_units: Array[Dictionary] = []
 var enemy_units: Array[Dictionary] = []
@@ -29,7 +32,7 @@ var match_message := ""
 
 
 func _ready() -> void:
-	camera.position = Vector2(640, 1100)
+	camera.position = Vector2(1600, 1600)
 	camera.make_current()
 	_spawn_unit("infantry", "player", PLAYER_BASE + Vector2(150, -100))
 	_spawn_unit("tank", "player", PLAYER_BASE + Vector2(220, 0))
@@ -228,15 +231,51 @@ func _update_hud() -> void:
 		stats_label.text += "\n" + match_message
 
 
+func _grid_to_iso(column: int, row: int) -> Vector2:
+	return Vector2(1600.0 + (column - row) * ISO_TILE_WIDTH * 0.5, (column + row) * ISO_TILE_HEIGHT * 0.5)
+
+
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, MAP_SIZE), Color(0.16, 0.24, 0.19), true)
-	for x in range(0, int(MAP_SIZE.x), 100):
-		draw_line(Vector2(x, 0), Vector2(x, MAP_SIZE.y), Color(0.28, 0.36, 0.29, 0.45), 1.0)
-	for y in range(0, int(MAP_SIZE.y), 100):
-		draw_line(Vector2(0, y), Vector2(MAP_SIZE.x, y), Color(0.28, 0.36, 0.29, 0.45), 1.0)
-	# A simple river and road make the prototype battlefield readable.
-	draw_line(Vector2(1500, 0), Vector2(1700, MAP_SIZE.y), Color(0.12, 0.34, 0.52), 52.0)
-	draw_line(Vector2(0, 1450), Vector2(MAP_SIZE.x, 900), Color(0.42, 0.39, 0.29), 30.0)
+	# Large isometric diamond-tile battlefield. Logic positions remain in world pixels.
+	draw_rect(Rect2(Vector2.ZERO, MAP_SIZE), Color(0.10, 0.16, 0.13), true)
+	for row in range(ISO_GRID_SIZE):
+		for column in range(ISO_GRID_SIZE):
+			var center := _grid_to_iso(column, row)
+			var terrain_seed := (column * 17 + row * 31 + column * row * 3) % 13
+			var terrain := Color(0.22, 0.34, 0.23)
+			if terrain_seed == 0 or terrain_seed == 7:
+				terrain = Color(0.25, 0.38, 0.25)
+			elif terrain_seed == 4:
+				terrain = Color(0.19, 0.30, 0.22)
+			elif terrain_seed == 10:
+				terrain = Color(0.31, 0.34, 0.24)
+			var diamond := PackedVector2Array([
+				center + Vector2(0, -ISO_TILE_HEIGHT * 0.5),
+				center + Vector2(ISO_TILE_WIDTH * 0.5, 0),
+				center + Vector2(0, ISO_TILE_HEIGHT * 0.5),
+				center + Vector2(-ISO_TILE_WIDTH * 0.5, 0)
+			])
+			draw_colored_polygon(diamond, terrain)
+			draw_polyline(PackedVector2Array([
+				diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]
+			]), Color(0.08, 0.15, 0.11, 0.34), 1.0, true)
+			# Sparse rock/vegetation marks add readable terrain texture.
+			if terrain_seed == 2:
+				draw_circle(center + Vector2(0, -4), 5.0, Color(0.13, 0.20, 0.14))
+				draw_circle(center + Vector2(7, 1), 3.5, Color(0.17, 0.24, 0.16))
+	# A river and a road follow the isometric grid.
+	var river_points := PackedVector2Array()
+	for row in range(4, 61, 4):
+		river_points.append(_grid_to_iso(29 + int(sin(float(row) * 0.22) * 5.0), row))
+	draw_polyline(river_points, Color(0.10, 0.29, 0.43), 34.0, true)
+	draw_polyline(river_points, Color(0.17, 0.40, 0.53), 23.0, true)
+	var road_points := PackedVector2Array([
+		_grid_to_iso(5, 31), _grid_to_iso(18, 29), _grid_to_iso(32, 32), _grid_to_iso(47, 30), _grid_to_iso(59, 33)
+	])
+	draw_polyline(road_points, Color(0.24, 0.22, 0.17), 25.0, true)
+	draw_polyline(road_points, Color(0.43, 0.39, 0.29), 17.0, true)
+	# Map edge.
+	draw_rect(Rect2(Vector2(12, 12), MAP_SIZE - Vector2(24, 24)), Color(0.55, 0.67, 0.49, 0.8), false, 5.0)
 	_draw_base(PLAYER_BASE, Color(0.2, 0.55, 0.95), player_base_hp)
 	_draw_base(ENEMY_BASE, Color(0.9, 0.25, 0.2), enemy_base_hp)
 	for unit in player_units:
@@ -248,7 +287,6 @@ func _draw() -> void:
 		var b := _screen_to_world(drag_end)
 		draw_rect(Rect2(a, b - a).abs(), Color(0.3, 0.75, 1.0, 0.12), true)
 		draw_rect(Rect2(a, b - a).abs(), Color(0.4, 0.85, 1.0, 0.9), false, 2.0)
-
 
 func _draw_base(pos: Vector2, tint: Color, hp: float) -> void:
 	draw_colored_polygon(PackedVector2Array([pos + Vector2(0, -95), pos + Vector2(125, 0), pos + Vector2(0, 95), pos + Vector2(-125, 0)]), tint.darkened(0.25))
