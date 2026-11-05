@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "project.godot"
+      - "icon.svg"
       - "export_presets.cfg"
       - "scenes/**"
       - "scripts/**"
