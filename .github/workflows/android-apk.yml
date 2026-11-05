@@ -1,0 +1,44 @@
+name: Build Strike Zone Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.gd'
+      - '**.tscn'
+      - '**.tres'
+      - 'project.godot'
+      - 'export_presets.cfg'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: Export Android debug APK
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Verify Godot project and import resources
+        run: godot --headless --editor --path . --quit
+
+      - name: Export ARM64 Android APK
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-debug "Android" build/strike-zone-debug.apk
+          test -s build/strike-zone-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: strike-zone-android-debug
+          path: build/strike-zone-debug.apk
+          if-no-files-found: error
+          retention-days: 14
