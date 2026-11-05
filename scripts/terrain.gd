@@ -3,7 +3,7 @@ extends Node2D
 const ISO_TILE_WIDTH := 96.0
 const ISO_TILE_HEIGHT := 48.0
 const ISO_GRID_SIZE := 64
-const MAP_SIZE := Vector2(3200, 3200)
+const MAP_SIZE := Vector2(6200, 3200)
 
 
 func _ready() -> void:
@@ -12,7 +12,7 @@ func _ready() -> void:
 
 
 func _grid_to_iso(column: int, row: int) -> Vector2:
-	return Vector2(1600.0 + (column - row) * ISO_TILE_WIDTH * 0.5, (column + row) * ISO_TILE_HEIGHT * 0.5)
+	return Vector2(3100.0 + (column - row) * ISO_TILE_WIDTH * 0.5, 88.0 + (column + row) * ISO_TILE_HEIGHT * 0.5)
 
 
 func _draw() -> void:
