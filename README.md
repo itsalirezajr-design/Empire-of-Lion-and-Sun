@@ -27,6 +27,7 @@ This is a prototype foundation, not the complete game. The source now includes p
 - `scripts/terrain.gd` — static isometric terrain and river/road rendering
 - `docs/MVP_0.1_FA.md` — technical MVP specification (Persian)
 - `docs/ROADMAP_FA.md` — phased development plan (Persian)
+- `docs/ANDROID_BUILD_FA.md` — Android APK build, download, and installation guide (Persian)
 
 ## Run
 
