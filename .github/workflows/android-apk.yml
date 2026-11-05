@@ -20,21 +20,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Configure Android export tools for the runner user
+      - name: Configure Android export tools and debug signing
         run: |
           mkdir -p "$HOME/.local/share/godot/export_templates" "$HOME/.config/godot"
           cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
-          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<'EOF'
+          keytool -genkeypair -v -keystore "$RUNNER_TEMP/empire-debug.keystore" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<EOF
           [gd_resource type="EditorSettings" format=3]
           [resource]
           export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
           export/android/android_sdk_path = "/usr/lib/android-sdk"
-          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore = "$RUNNER_TEMP/empire-debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           export/android/force_system_user = false
           export/android/timestamping_authority_url = ""
           EOF
+          test -s "$HOME/.local/share/godot/export_templates/4.4.1.stable/android_debug.apk"
+          test -x "/usr/lib/jvm/java-17-openjdk-amd64/bin/java"
+          test -x "/usr/lib/android-sdk/platform-tools/adb"
+          test -s "$RUNNER_TEMP/empire-debug.keystore"
       - name: Import project
         run: godot --headless --editor --path . --quit
       - name: Run phase 1 and 2 gameplay tests
@@ -43,8 +48,9 @@ jobs:
         run: godot --headless --path . --script res://tests/phase3_ui_smoke.gd
       - name: Build Android debug APK
         env:
-          HOME: /root
-          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
+          ANDROID_HOME: /usr/lib/android-sdk
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/empire-debug.keystore
           GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
