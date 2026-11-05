@@ -67,7 +67,8 @@ func _process(delta: float) -> void:
 		materials += 18
 		income_clock = 0.0
 	if enemy_spawn_clock >= 14.0:
-		_spawn_unit("infantry" if int(elapsed) % 2 == 0 else "tank", "enemy", ENEMY_BASE + Vector2(-100, randf_range(-180, 180)))
+		if enemy_units.size() < 30:
+			_spawn_unit("infantry" if int(elapsed) % 2 == 0 else "tank", "enemy", ENEMY_BASE + Vector2(-100, randf_range(-180, 180)))
 		enemy_spawn_clock = 0.0
 	_update_team(player_units, enemy_units, delta, true)
 	_update_team(enemy_units, player_units, delta, false)
@@ -122,7 +123,7 @@ func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: 
 				unit["cooldown"] = ATTACK_INTERVAL
 		else:
 			var destination: Vector2 = unit["destination"]
-			if not is_player and (destination == ENEMY_BASE or pos.distance_to(PLAYER_BASE) < pos.distance_to(ENEMY_BASE)):
+			if not is_player:
 				destination = PLAYER_BASE
 			if pos.distance_to(destination) > 7.0:
 				var avoidance := _separation_vector(unit, team)
@@ -393,6 +394,10 @@ func _add_hud_button(parent: HBoxContainer, caption: String, action: Callable) -
 
 func _recruit_unit(kind: String) -> void:
 	if match_over:
+		return
+	if player_units.size() >= 30:
+		hud_message = "Army limit reached (30 units)."
+		_update_hud()
 		return
 	var cost_credits := 100
 	var cost_fuel := 0
