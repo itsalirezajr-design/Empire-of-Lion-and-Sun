@@ -7,8 +7,8 @@ const ISO_GRID_SIZE := 64
 const UNIT_SPEED := 115.0
 const ATTACK_RANGE := 145.0
 const ATTACK_INTERVAL := 0.85
-const PLAYER_BASE := Vector2(320, 1600)
-const ENEMY_BASE := Vector2(5880, 1600)
+const PLAYER_BASE := Vector2(800, 1600)
+const ENEMY_BASE := Vector2(5400, 1600)
 
 var player_units: Array[Dictionary] = []
 var enemy_units: Array[Dictionary] = []
