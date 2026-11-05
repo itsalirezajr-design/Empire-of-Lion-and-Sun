@@ -12,7 +12,9 @@ The first playable milestone focuses on the battle loop only:
 - Touch/mouse selection, two-finger camera pan, pinch zoom, and group movement formations
 - Mobile command HUD with unit recruitment, stop, and select-all controls
 - Three unit roles: infantry, tank, and APC
+- A* grid pathfinding around a blocked river, with a road bridge
 - Basic automatic combat and a simple enemy AI
+- Local JSON save/load for the current battle state
 - A small resource economy and a win/loss condition
 
 This is a prototype foundation, not the complete game. World-map country management, advanced pathfinding, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
@@ -21,13 +23,14 @@ This is a prototype foundation, not the complete game. World-map country managem
 
 - `project.godot` — Godot project settings
 - `scenes/Main.tscn` — main prototype scene
-- `scripts/main.gd` — first playable battle-loop prototype
+- `scripts/main.gd` — battle loop, controls, A* pathfinding, combat, HUD, and local save/load
+- `scripts/terrain.gd` — static isometric terrain and river/road rendering
 - `docs/MVP_0.1_FA.md` — technical MVP specification (Persian)
 - `docs/ROADMAP_FA.md` — phased development plan (Persian)
 
 ## Run
 
-Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; obstacle pathfinding, full base production, save/load, and runtime/export testing remain open.
+Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; full base production, and runtime/export testing remain open. A* pathfinding and local save/load are now implemented in source but still require runtime validation.
 
 ## Design decisions
 
