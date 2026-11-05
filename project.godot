@@ -9,7 +9,14 @@ config/description="A first-person tactical shooter prototype."
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/handheld/orientation=1
+window/stretch/mode="canvas_items"
+
+[physics]
+3d/default_gravity=9.8
+common/physics_ticks_per_second=60
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
