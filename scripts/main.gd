@@ -113,8 +113,14 @@ func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: 
 			if pos.distance_to(destination) > 7.0:
 				pos = pos.move_toward(destination, float(unit["speed"]) * delta)
 				unit["pos"] = pos
+			elif is_player:
+				if pos.distance_to(ENEMY_BASE) <= 150.0 and float(unit["cooldown"]) <= 0.0:
+					enemy_base_hp -= float(unit["damage"])
+					unit["cooldown"] = ATTACK_INTERVAL
 			elif not is_player:
-				player_base_hp -= 4.0 * delta
+				if pos.distance_to(PLAYER_BASE) <= 150.0 and float(unit["cooldown"]) <= 0.0:
+					player_base_hp -= float(unit["damage"])
+					unit["cooldown"] = ATTACK_INTERVAL
 		if float(unit["hp"]) <= 0.0:
 			if selected_units.has(unit):
 				selected_units.erase(unit)
