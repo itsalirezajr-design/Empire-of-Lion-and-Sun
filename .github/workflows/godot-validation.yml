@@ -1,0 +1,37 @@
+name: Godot validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.gd'
+      - '**/*.tscn'
+      - '**/*.tres'
+      - 'project.godot'
+      - 'tests/**'
+      - '.github/workflows/godot-validation.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Import, unit tests and scene smoke test
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Import and parse project
+        run: godot --headless --editor --path . --quit
+
+      - name: Run weapon ballistics tests
+        run: godot --headless --path . --script res://tests/weapon_ballistics_test.gd
+
+      - name: Run main scene smoke test
+        run: godot --headless --path . --quit-after 3

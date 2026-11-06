@@ -1,7 +1,16 @@
 extends Node3D
 
 const PlayerScript = preload("res://scripts/player.gd")
+const WeaponBallistics = preload("res://scripts/weapon_ballistics.gd")
 const MAGAZINE_SIZE := 30
+const BASE_SPREAD_DEGREES := 0.18
+const SHOT_BLOOM_PER_SHOT := 0.14
+const MAX_SHOT_BLOOM_DEGREES := 1.7
+const BLOOM_RECOVERY_PER_SECOND := 1.35
+const MOVEMENT_SPREAD_DEGREES := 0.95
+const AIRBORNE_SPREAD_DEGREES := 1.65
+const RECOIL_PITCH_PER_SHOT := 0.52
+const RECOIL_YAW_MAX_DEGREES := 0.2
 const FIRE_INTERVAL := 0.105
 const RELOAD_DURATION := 1.65
 const RAY_LENGTH := 100.0
@@ -16,10 +25,20 @@ var reload_time := 0.0
 var fire_held := false
 var hud: Label
 var message: Label
+var crosshair: Label
+var shot_bloom := 0.0
+var weapon_recoil := 0.0
+var weapon_mesh: MeshInstance3D
+var weapon_home_position := Vector3(0.28, -0.23, -0.48)
+var shot_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	shot_rng.randomize()
 	_build_arena()
 	_spawn_player()
+	weapon_mesh = player.get_node_or_null("Camera3D/PrototypeWeapon") as MeshInstance3D
+	if is_instance_valid(weapon_mesh):
+		weapon_home_position = weapon_mesh.position
 	_build_hud()
 	_spawn_targets()
 	if DisplayServer.is_touchscreen_available():
@@ -27,6 +46,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	shot_bloom = move_toward(shot_bloom, 0.0, BLOOM_RECOVERY_PER_SECOND * delta)
+	weapon_recoil = move_toward(weapon_recoil, 0.0, 3.8 * delta)
+	if is_instance_valid(weapon_mesh):
+		weapon_mesh.position = weapon_home_position + Vector3(0.0, weapon_recoil * 0.045, weapon_recoil * 0.22)
 	if fire_held:
 		_shoot()
 	if is_reloading:
@@ -162,7 +185,7 @@ func _build_hud() -> void:
 	message.text = "موبایل: سمت چپ حرکت | سمت راست نگاه | دکمه‌ها شلیک و پرش"
 	layer.add_child(message)
 
-	var crosshair := Label.new()
+	crosshair = Label.new()
 	crosshair.text = "+"
 	crosshair.anchor_left = 0.5
 	crosshair.anchor_top = 0.5
@@ -219,6 +242,8 @@ func _update_hud() -> void:
 	if is_instance_valid(hud):
 		var state := "در حال بارگذاری خشاب..." if is_reloading else ""
 		hud.text = "STRIKE ZONE     امتیاز: %d\nRIFLE   %02d / %02d   %s" % [score, ammo, reserve_ammo, state]
+	if is_instance_valid(crosshair):
+		crosshair.add_theme_font_size_override("font_size", 30 + roundi(shot_bloom * 5.0))
 
 func _shoot() -> void:
 	if is_reloading or fire_cooldown > 0.0 or ammo <= 0:
@@ -229,7 +254,27 @@ func _shoot() -> void:
 	fire_cooldown = FIRE_INTERVAL
 	var camera := player.get_node("Camera3D") as Camera3D
 	var origin := camera.global_position
-	var end := origin - camera.global_basis.z * RAY_LENGTH
+	var horizontal_speed := Vector2(player.velocity.x, player.velocity.z).length()
+	var spread_degrees := WeaponBallistics.calculate_spread(
+		BASE_SPREAD_DEGREES,
+		shot_bloom,
+		horizontal_speed,
+		player.is_on_floor(),
+		MOVEMENT_SPREAD_DEGREES,
+		AIRBORNE_SPREAD_DEGREES
+	)
+	var shot_direction := WeaponBallistics.direction_with_spread(
+		-camera.global_basis.z,
+		camera.global_basis.x,
+		camera.global_basis.y,
+		spread_degrees,
+		shot_rng.randf_range(-1.0, 1.0),
+		shot_rng.randf_range(-1.0, 1.0)
+	)
+	var end := origin + shot_direction * RAY_LENGTH
+	shot_bloom = minf(shot_bloom + SHOT_BLOOM_PER_SHOT, MAX_SHOT_BLOOM_DEGREES)
+	weapon_recoil = minf(weapon_recoil + 0.48, 1.6)
+	player.call("apply_weapon_recoil", RECOIL_PITCH_PER_SHOT, shot_rng.randf_range(-RECOIL_YAW_MAX_DEGREES, RECOIL_YAW_MAX_DEGREES))
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.exclude = [player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)

@@ -84,15 +84,17 @@ Do not label a preset “60 FPS” as achieved until the physical-device test co
 
 ## Build order
 
-1. Validate and stabilize the existing Godot prototype.
-2. Add Android landscape project settings and touch controls.
-3. Create the Old Quarter — Bombsite B greybox and gameplay routes.
-4. Replace greybox pieces with optimized original environment assets and materials.
-5. Add the first-person weapon, hands, animations, and effects.
-6. Add one bot and a complete practice round.
-7. Profile on POCO X6 Pro; tune presets from measured results.
-8. Only then expand maps, weapons, modes, and multiplayer.
+1. Finish first-person movement, camera response, and firing feel.
+2. Tune weapon handling: spread, recoil, recovery, reload feedback, and weapon switching.
+3. Add attacker/defender teams, timed rounds, planting, and defusing.
+4. Add tactical bots with patrol, cover use, target selection, and team behavior.
+5. Finish touch HUD and Android export; keep the prototype and release outputs separate.
+6. Profile on the actual POCO X6 Pro and tune from measured results.
+7. Add LAN sessions.
+8. Add online matchmaking and authoritative multiplayer only after the offline round loop is stable.
 
 ## Current status
 
-This document defines the target and implementation plan. The existing repository is still an early procedural prototype. The visual slice, Android controls, device profiling, and APK have not yet been completed or verified.
+The repository is now Strike Zone, a first-person tactical shooter prototype; the former strategy-game direction is out of scope. Implemented foundations include first-person movement, multitouch look/move, a hitscan rifle, reload/ammo, target practice, movement/air/burst spread, and recoverable camera/weapon recoil. Automated math tests and a headless scene smoke test are being added to CI.
+
+The procedural arena and weapon are still greybox prototypes. Team rounds, bomb objectives, tactical bots, final touch UX, Android export validation, LAN, and online play remain future work. No physical-device performance or input test is claimed until it is actually run.

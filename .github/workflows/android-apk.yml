@@ -2,16 +2,6 @@ name: Build Strike Zone Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '**.gd'
-      - '**.tscn'
-      - '**.tres'
-      - 'project.godot'
-      - 'export_presets.cfg'
-      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read
@@ -35,7 +25,7 @@ jobs:
           godot --headless --path . --export-debug "Android" build/strike-zone-debug.apk
           test -s build/strike-zone-debug.apk
 
-      - name: Upload APK artifact
+      - name: Upload experimental APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: strike-zone-android-debug

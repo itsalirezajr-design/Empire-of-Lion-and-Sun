@@ -14,6 +14,14 @@ var _move_touch_index := -1
 var _look_touch_index := -1
 var _move_touch_origin := Vector2.ZERO
 var _touch_move := Vector2.ZERO
+var _look_pitch := 0.0
+var _recoil_pitch := 0.0
+var _recoil_yaw := 0.0
+
+const MAX_RECOIL_PITCH_DEGREES := 5.5
+const MAX_RECOIL_YAW_DEGREES := 1.2
+const RECOIL_PITCH_RECOVERY := 8.0
+const RECOIL_YAW_RECOVERY := 12.0
 
 func _ready() -> void:
 	_setup_input_actions()
@@ -101,10 +109,32 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> void:
 
 func _apply_look(relative_motion: Vector2, sensitivity: float) -> void:
 	rotate_y(-relative_motion.x * sensitivity)
-	camera.rotate_x(-relative_motion.y * sensitivity)
-	camera.rotation.x = clampf(camera.rotation.x, deg_to_rad(-LOOK_LIMIT), deg_to_rad(LOOK_LIMIT))
+	_look_pitch = clampf(
+		_look_pitch - relative_motion.y * sensitivity,
+		deg_to_rad(-LOOK_LIMIT),
+		deg_to_rad(LOOK_LIMIT)
+	)
+	_update_camera_rotation()
+
+func apply_weapon_recoil(pitch_degrees: float, yaw_degrees: float) -> void:
+	_recoil_pitch = clampf(_recoil_pitch + pitch_degrees, 0.0, MAX_RECOIL_PITCH_DEGREES)
+	_recoil_yaw = clampf(_recoil_yaw + yaw_degrees, -MAX_RECOIL_YAW_DEGREES, MAX_RECOIL_YAW_DEGREES)
+	_update_camera_rotation()
+
+func _update_camera_rotation() -> void:
+	if not is_instance_valid(camera):
+		return
+	camera.rotation.x = clampf(
+		_look_pitch - deg_to_rad(_recoil_pitch),
+		deg_to_rad(-LOOK_LIMIT),
+		deg_to_rad(LOOK_LIMIT)
+	)
+	camera.rotation.y = deg_to_rad(_recoil_yaw)
 
 func _physics_process(delta: float) -> void:
+	_recoil_pitch = move_toward(_recoil_pitch, 0.0, RECOIL_PITCH_RECOVERY * delta)
+	_recoil_yaw = move_toward(_recoil_yaw, 0.0, RECOIL_YAW_RECOVERY * delta)
+	_update_camera_rotation()
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	if Input.is_action_just_pressed("jump") and is_on_floor():
