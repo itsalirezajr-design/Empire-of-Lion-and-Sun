@@ -95,6 +95,6 @@ Do not label a preset “60 FPS” as achieved until the physical-device test co
 
 ## Current status
 
-The repository is now Strike Zone, a first-person tactical shooter prototype; the former strategy-game direction is out of scope. Implemented foundations include first-person movement, multitouch look/move, a hitscan rifle, reload/ammo, target practice, movement/air/burst spread, and recoverable camera/weapon recoil. Automated math tests and a headless scene smoke test are being added to CI.
+The repository is now Strike Zone, a first-person tactical shooter prototype; the former strategy-game direction is out of scope. Implemented foundations include first-person movement, multitouch look/move, a hitscan rifle, reload/ammo, target practice, movement/air/burst spread, and recoverable camera/weapon recoil. Automated weapon-ballistics tests and a headless main-scene smoke test now run in GitHub Actions; the latest run on 2026-11-06 passed.
 
 The procedural arena and weapon are still greybox prototypes. Team rounds, bomb objectives, tactical bots, final touch UX, Android export validation, LAN, and online play remain future work. No physical-device performance or input test is claimed until it is actually run.
