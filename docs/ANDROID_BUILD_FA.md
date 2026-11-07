@@ -2,14 +2,14 @@
 
 ## ساخت خودکار
 
-با هر تغییر مرتبط روی شاخه `main`، گردش‌کار **Android debug APK** اجرا می‌شود. آخرین ساخت موفق: Godot 4.4.1، APK آزمایشی ARM64، صحت آرشیو و امضای APK تأیید شده است. اجرای واقعی روی گوشی هنوز باید انجام شود.
+گردش‌کار Godot validation روی شاخه‌های `main` و `empire-rts-recovery` اجرا می‌شود. ساخت موفق APK آزمایشی ARM64 از commit `4f8b56b` انجام شده و اسکریپت اصلی نبرد آن با نسخه RTS فعلی این شاخه یکسان است؛ صحت ZIP و امضای APK در CI تأیید شده است. نصب و اجرای واقعی روی گوشی هنوز تأیید نشده است.
 
 پس از موفقیت:
 
-1. صفحه Actions مخزن را باز کنید.
-2. اجرای موفق **Android debug APK** را انتخاب کنید.
-3. از بخش Artifacts، فایل `EmpireOfLionAndSun-Android-debug` را دریافت کنید.
-4. ZIP را استخراج کنید؛ فایل درون آن `EmpireOfLionAndSun-debug.apk` است.
+1. [اجرای ساخت موفق APK در GitHub Actions](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42007902708) را باز کنید.
+2. از بخش Artifacts، فایل `EmpireOfLionAndSun-Android-debug` را دریافت کنید.
+3. ZIP را استخراج کنید؛ فایل درون آن `EmpireOfLionAndSun-debug.apk` است.
+4. این artifact در ۱۹ نوامبر ۲۰۲۶ منقضی می‌شود؛ اگر پس از آن لازم شد، باید دوباره APK ساخته شود.
 
 ## نصب روی گوشی
 
