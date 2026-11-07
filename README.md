@@ -21,6 +21,11 @@ The first playable milestone focuses on the battle loop only:
 
 This is a prototype foundation, not the complete game. The source now includes placeable barracks, armor factory and resource depot, construction timers, production queues, resource capacity, building repair/upgrades, and versioned local persistence. Godot headless CI validation is passing. A main menu, continue/new campaign, settings, in-game pause and tutorial have now been added. An ARM64 Android debug APK has now been built successfully in CI, its ZIP integrity and APK signature have been verified, and the artifact is available from the Android Actions run. Physical-device installation and touch/performance testing remain pending. World-map country management, online multiplayer, LAN/hotspot multiplayer, naval/air forces, and production-grade art are later milestones.
 
+## Verified builds
+
+- Godot 4.4.1 headless validation, including the new mobile camera/formation test: [successful run on 7 Nov 2026](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42348371415).
+- ARM64 debug APK built from the same RTS gameplay source (the `scripts/main.gd` blob is identical to this branch): [download artifact](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42007902708/artifacts/13404948350). GitHub artifact retention ends 19 Nov 2026. It is debug-signed and is not a release build.
+
 ## Project layout
 
 - `project.godot` — Godot project settings
