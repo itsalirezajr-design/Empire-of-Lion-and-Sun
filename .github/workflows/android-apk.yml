@@ -2,7 +2,7 @@ name: Android debug APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, empire-rts-recovery]
     paths:
       - "project.godot"
       - "icon.svg"
@@ -55,6 +55,10 @@ jobs:
         run: godot --headless --path . --script res://tests/navigation_smoke.gd
       - name: Run phase 3 menu tests
         run: godot --headless --path . --script res://tests/phase3_ui_smoke.gd
+      - name: Run mobile input smoke tests
+        run: godot --headless --path . --script res://tests/mobile_input_smoke.gd
+      - name: Run combat and win/loss smoke tests
+        run: godot --headless --path . --script res://tests/combat_smoke.gd
       - name: Build Android debug APK
         env:
           ANDROID_HOME: /usr/lib/android-sdk
