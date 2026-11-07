@@ -35,11 +35,11 @@ This is a prototype foundation, not the complete game. The source now includes p
 - `docs/MVP_0.1_FA.md` — technical MVP specification (Persian)
 - `docs/ROADMAP_FA.md` — phased development plan (Persian)
 - `docs/ANDROID_BUILD_FA.md` — Android APK build, download, and installation guide (Persian)
-- `tests/navigation_smoke.gd` and `tests/mobile_input_smoke.gd` — automated battle, economy, persistence, camera-gesture and formation checks
+- `tests/navigation_smoke.gd`, `tests/mobile_input_smoke.gd`, and `tests/combat_smoke.gd` — automated battle, economy, persistence, touch-gesture, formation, combat and win/loss checks
 
 ## Run
 
-Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the existing battle/economy/save tests have passed in CI. New simulated two-finger camera, gesture-isolation, three-unit formation and A* bridge-route tests have also passed in Godot 4.4.1 CI. An ARM64 debug APK was rebuilt after the combat fix and all smoke tests passed; its ZIP integrity and v1/v2/v3 signature checks succeeded. Installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
+Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the battle/economy/save tests have passed in CI. Simulated two-finger camera, gesture-isolation, three-unit formation, A* bridge-route, combat, cooldown, defeated-unit cleanup and win/loss tests have also passed. An ARM64 debug APK was rebuilt after the combat fix and all smoke tests passed; its ZIP integrity and v1/v2/v3 signature checks succeeded. Installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
 
 ## Design decisions
 
