@@ -23,8 +23,8 @@ This is a prototype foundation, not the complete game. The source now includes p
 
 ## Verified builds
 
-- Godot 4.4.1 headless validation, including the new mobile camera/formation test: [successful run on 7 Nov 2026](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42348371415).
-- ARM64 debug APK built from the same RTS gameplay source (the `scripts/main.gd` blob is identical to this branch): [download artifact](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42007902708/artifacts/13404948350). GitHub artifact retention ends 19 Nov 2026. It is debug-signed and is not a release build.
+- Godot 4.4.1 headless validation, including mobile input, formation, combat regression and win/loss tests: [successful run on 7 Nov 2026](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42348704565).
+- Latest ARM64 debug APK, built after all gameplay regression tests passed: [download artifact](https://github.com/itsalirezajr-design/Empire-of-Lion-and-Sun/actions/runs/42348704646/artifacts/13564861407). GitHub artifact retention ends 21 Nov 2026. It is debug-signed and is not a release build.
 
 ## Project layout
 
@@ -39,7 +39,7 @@ This is a prototype foundation, not the complete game. The source now includes p
 
 ## Run
 
-Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the existing battle/economy/save tests have passed in CI. New simulated two-finger camera, gesture-isolation, three-unit formation and A* bridge-route tests have also passed in Godot 4.4.1 CI. An ARM64 debug APK was built and its archive/signature were verified in CI; installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
+Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the existing battle/economy/save tests have passed in CI. New simulated two-finger camera, gesture-isolation, three-unit formation and A* bridge-route tests have also passed in Godot 4.4.1 CI. An ARM64 debug APK was rebuilt after the combat fix and all smoke tests passed; its ZIP integrity and v1/v2/v3 signature checks succeeded. Installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
 
 ## Design decisions
 
