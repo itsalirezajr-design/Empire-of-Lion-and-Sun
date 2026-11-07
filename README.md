@@ -4,6 +4,8 @@
 
 A real-time strategy game set in a modern-day world (starting in 2026). The long-term vision combines a world-management layer with separate large, isometric operational battlefields.
 
+**یادداشت شاخه (۷ نوامبر ۲۰۲۶):** شاخه پیش‌فرض `main` بعداً به پروتوتایپ FPS جداگانه‌ای با نام Strike Zone تغییر کرده است. آخرین وضعیت RTS پیش از آن تغییر، بدون بازنویسی `main` در شاخه `empire-rts-recovery` از commit `b26db0f` نگه‌داری شده و توسعه Empire of Lion and Sun در همین شاخه ادامه می‌یابد.
+
 ## Current milestone: MVP 0.1
 
 The first playable milestone focuses on the battle loop only:
@@ -28,10 +30,11 @@ This is a prototype foundation, not the complete game. The source now includes p
 - `docs/MVP_0.1_FA.md` — technical MVP specification (Persian)
 - `docs/ROADMAP_FA.md` — phased development plan (Persian)
 - `docs/ANDROID_BUILD_FA.md` — Android APK build, download, and installation guide (Persian)
+- `tests/navigation_smoke.gd` and `tests/mobile_input_smoke.gd` — automated battle, economy, persistence, camera-gesture and formation checks
 
 ## Run
 
-Open this repository as a project in **Godot 4.x**, then run the main scene. The source currently includes the first MVP battle loop, isometric terrain, mobile camera input, unit visuals, basic formations, and a mobile command HUD. It has **not yet been run in Godot or validated on a physical Android device**; headless Godot CI validation is now passing, including the expanded phase 1/2 smoke tests. The Android debug APK build and signature verification have passed. Physical Android device installation, touch/performance testing, and a separate release-signed build remain open. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
+Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the existing battle/economy/save tests have passed in CI. New simulated two-finger camera and group-formation tests have been added and are awaiting their first CI result. An ARM64 debug APK was built and its archive/signature were verified in CI; installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
 
 ## Design decisions
 
