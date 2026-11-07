@@ -2,7 +2,7 @@ name: Godot project validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, empire-rts-recovery]
     paths:
       - "project.godot"
       - "scenes/**"
