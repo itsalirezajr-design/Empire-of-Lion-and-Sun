@@ -202,6 +202,12 @@ func _spawn_unit(kind: String, team: String, at: Vector2) -> void:
 func _update_team(team: Array[Dictionary], opponents: Array[Dictionary], delta: float, is_player: bool) -> void:
 	for i in range(team.size() - 1, -1, -1):
 		var unit: Dictionary = team[i]
+		# A unit killed by the opposing team earlier in this frame must not retaliate.
+		if float(unit["hp"]) <= 0.0:
+			if selected_units.has(unit):
+				selected_units.erase(unit)
+			team.remove_at(i)
+			continue
 		unit["cooldown"] = maxf(0.0, float(unit["cooldown"]) - delta)
 		var pos: Vector2 = unit["pos"]
 		var target: Dictionary = _nearest_enemy(pos, opponents)
