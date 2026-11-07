@@ -34,7 +34,7 @@ This is a prototype foundation, not the complete game. The source now includes p
 
 ## Run
 
-Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the existing battle/economy/save tests have passed in CI. New simulated two-finger camera and group-formation tests have been added and are awaiting their first CI result. An ARM64 debug APK was built and its archive/signature were verified in CI; installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
+Open this branch as a project in **Godot 4.x**, then run the main scene. Headless Godot 4.4.1 validation and the existing battle/economy/save tests have passed in CI. New simulated two-finger camera, gesture-isolation, three-unit formation and A* bridge-route tests have also passed in Godot 4.4.1 CI. An ARM64 debug APK was built and its archive/signature were verified in CI; installation, touch behavior, and performance on a physical Android device remain unverified. A* pathfinding, base construction/production, and versioned local save/load are implemented in source.
 
 ## Design decisions
 
